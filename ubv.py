@@ -25,6 +25,7 @@ CONTENT = os.path.join(ROOT, "_content")
 TPL = os.path.join(ROOT, "_tools", "templates")
 SITE_JSON = os.path.join(CONTENT, "site.json")
 DOCS_JSON = os.path.join(CONTENT, "docs.json")
+PROJECTS_JSON = os.path.join(CONTENT, "projects.json")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 MONTHS = "января февраля марта апреля мая июня июля августа сентября октября ноября декабря".split()
 
@@ -110,6 +111,18 @@ def registry(docs, root):
             "<tbody>%s</tbody></table>" % "".join(rows))
 
 
+def projects_table(projects, root):
+    """Проекты — готовые статичные страницы в projects/<slug>/, генератор их не трогает, только ссылается"""
+    if not projects:
+        return ""
+    rows = "".join('<tr><td class="code">%s</td><td class="ttl"><a href="%s%s">%s</a><span class="kd">%s</span></td>'
+                   '<td class="date">%s</td><td class="pdf"><a href="%s%s">Открыть →</a></td></tr>'
+                   % (esc(p["name"]), root, esc(p["path"]), esc(p["title"]), esc(p["kind"]), ru_date(p["date"]),
+                      root, esc(p["path"])) for p in projects)
+    return ('<section>\n  <h2 class="h">Проекты</h2>\n  <table class="reg"><thead><tr><th>Проект</th><th>Название</th>'
+            '<th class="date">Дата</th><th></th></tr></thead><tbody>%s</tbody></table>\n</section>' % rows)
+
+
 def dash(items):
     return '<ul class="dash">%s</ul>' % "".join("<li>%s</li>" % esc(i) for i in items)
 
@@ -118,6 +131,7 @@ def dash(items):
 
 def build(images=False):
     site, docs = load(SITE_JSON, {}), sorted(load(DOCS_JSON, []), key=lambda d: d["code"], reverse=True)
+    projects = sorted(load(PROJECTS_JSON, []), key=lambda p: p["date"], reverse=True)
     tg = site["telegram"]
 
     metrics = []
@@ -128,7 +142,7 @@ def build(images=False):
         metrics.append('<div><div class="big">%s</div><div class="lbl">%s</div></div>' % (esc(m["value"]), esc(m["label"])))
 
     home = fill(tpl("home.html"), headline=esc(site["headline"]), lead=esc(site["lead"]), metrics="".join(metrics),
-                registry=registry(docs, ""), tg_name=esc(tg["name"]), tg_title=esc(tg["title"]),
+                registry=registry(docs, ""), projects=projects_table(projects, ""), tg_name=esc(tg["name"]), tg_title=esc(tg["title"]),
                 tg_about=esc(tg["about"]), tg_url=esc(tg["url"]))
     write("index.html", page(site, root="", path="", title="UbVProject — программирование и конструкция БАС",
                              og_title="UbVProject — программирование и конструкция БАС", description=site["lead"],
@@ -154,7 +168,7 @@ def build(images=False):
         if images or not os.path.exists(os.path.join(dirp, "og.png")):
             doc_images(d)
 
-    urls = [""] + ["docs/"] + ["docs/%s/" % slug(d["code"]) for d in docs]
+    urls = [""] + ["docs/"] + ["docs/%s/" % slug(d["code"]) for d in docs] + [p["path"] for p in projects]
     base = site["base_url"].rstrip("/") + "/"
     write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
           + "".join("  <url><loc>%s%s</loc></url>\n" % (base, u) for u in urls) + "</urlset>\n")

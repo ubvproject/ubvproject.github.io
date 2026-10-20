@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dronegate — автосудейство для дрон-пионербола</title>
+<meta name="description" content="Ворота с ИК-барьером и RGBW-подсветкой, игровой сервер и судейский пульт для дрон-пионербола. Проект МКБ ИТМО совместно с ГК «Геоскан».">
+<link rel="canonical" href="https://ubvproject.github.io/projects/dronegate/">
+<meta property="og:site_name" content="UbVProject">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dronegate · автосудейство для дрон-пионербола">
+<meta property="og:description" content="Ворота с ИК-барьером и RGBW-подсветкой, игровой сервер и судейский пульт для дрон-пионербола. Проект МКБ ИТМО совместно с ГК «Геоскан».">
+<meta property="og:url" content="https://ubvproject.github.io/projects/dronegate/">
+<meta property="og:image" content="https://ubvproject.github.io/projects/dronegate/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b0e13">
+<link rel="icon" href="../../assets/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Тёмная студия под рендеры. Презентация ПАК сверху вниз: игра → комплекс → ворота → регламент → паспорт → статус */
+:root {
+  --bg: #0b0e13;
+  --panel: #12161e;
+  --panel-2: #181d27;
+  --line: #262d3a;
+  --fg: #e9edf3;
+  --soft: #c6ccd7;
+  --mute: #8d96a7;
+  --geo: #ff5a1f;
+  --red: #ff3b30;
+  --blue: #3b7bff;
+  --white: #f4efe6;
+  --yellow: #ffb020;
+  --ubv: #7cc39d;
+  --mode: #ff3b30;
+  --display: "Unbounded", "Helvetica Neue", Arial, sans-serif;
+  --body: "Golos Text", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 72px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+p { margin: 0; }
+a { color: inherit; }
+.eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute); }
+.num { font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--geo); outline-offset: 2px; }
+
+/* шапка */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; padding-block: 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 12px; font-family: var(--display); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
+.brand svg { width: 20px; height: 24px; flex: none; }
+.brand .x { color: var(--mute); font-weight: 400; }
+.nav { display: flex; gap: 4px 18px; flex-wrap: wrap; font-size: 13.5px; }
+.nav a { color: var(--mute); text-decoration: none; }
+.nav a:hover { color: var(--fg); }
+
+/* главный экран */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 40px; padding-block: 44px 8px; align-items: center; }
+.hero-text { display: grid; gap: 22px; min-width: 0; }
+.hero h1 { font-size: clamp(38px, 6vw, 68px); line-height: 0.98; font-weight: 800; }
+.hero h1 em { font-style: normal; color: var(--geo); }
+.lead { color: var(--soft); font-size: 16.5px; max-width: 48ch; }
+.parts3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.parts3 div { padding: 12px 14px; display: grid; gap: 2px; min-width: 0; }
+.parts3 div + div { border-left: 1px solid var(--line); }
+.parts3 b { font-family: var(--display); font-size: 14px; font-weight: 600; }
+.parts3 span { font-size: 12.5px; color: var(--mute); }
+.hero-img { margin: 0; border-radius: 16px; overflow: hidden; background: #000; aspect-ratio: 3 / 2; max-width: 100%; }
+.hero-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 36px; }
+.facts div { padding: 16px 18px 16px 0; display: grid; gap: 2px; min-width: 0; }
+.facts div + div { padding-left: 18px; border-left: 1px solid var(--line); }
+.facts b { font-family: var(--display); font-weight: 600; font-size: 24px; font-variant-numeric: tabular-nums; }
+.facts b small { font-family: var(--body); font-size: 13px; font-weight: 500; color: var(--mute); margin-left: 4px; }
+.facts span { font-size: 13px; color: var(--mute); }
+
+section { padding-block: 80px 0; scroll-margin-top: 16px; }
+.sec-head { display: grid; gap: 10px; margin-bottom: 28px; max-width: 64ch; }
+.sec-head h2 { font-size: clamp(24px, 3vw, 34px); }
+.sec-head p { color: var(--soft); }
+
+/* игра: симуляция матча */
+.game { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr); gap: 32px; align-items: start; }
+.game-text { display: grid; gap: 16px; min-width: 0; }
+.game-text ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.game-text li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; color: var(--soft); font-size: 14.5px; }
+.game-text li i { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-style: normal; font-family: var(--mono); font-size: 11px; background: var(--panel-2); border: 1px solid var(--line); color: var(--mute); }
+.demo { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; min-width: 0; }
+.board { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.score { display: flex; align-items: baseline; gap: 14px; font-family: var(--display); font-weight: 800; font-size: 34px; font-variant-numeric: tabular-nums; line-height: 1; }
+.score .b { color: var(--blue); } .score .r { color: var(--red); } .score .c { color: var(--mute); font-weight: 400; font-size: 26px; }
+.clock { justify-self: center; display: grid; justify-items: center; gap: 4px; }
+.clock b { font-family: var(--mono); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.phase { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--soft); }
+.phase[data-p="countdown"] { color: var(--yellow); border-color: var(--yellow); }
+.phase[data-p="play"] { color: var(--ubv); border-color: var(--ubv); }
+.ctl { display: flex; gap: 8px; }
+.ctl button { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+.ctl button:hover { border-color: var(--mute); }
+#field { display: block; width: 100%; aspect-ratio: 6.8 / 3.5; max-width: 100%; background: #0d1118; }
+.hud { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
+.hud > div { background: var(--panel); padding: 14px 16px; min-width: 0; }
+.gates { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.gcard { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 4px; background: var(--panel-2); min-width: 0; }
+.gcard .h { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; }
+.gcard .sw { width: 12px; height: 12px; border-radius: 3px; background: var(--c, var(--white)); box-shadow: 0 0 8px var(--c, var(--white)); }
+.gcard code { font-family: var(--mono); font-size: 12px; color: var(--soft); }
+.gcard span { font-size: 11.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
+.log { font-family: var(--mono); font-size: 12px; color: var(--soft); display: grid; gap: 3px; min-height: 6.2em; }
+.log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log b { color: var(--fg); font-weight: 600; }
+.hud .lbl { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); margin-bottom: 8px; }
+.demo-note { padding: 10px 18px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--mute); }
+
+/* ПАК */
+.flow { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; overflow-x: auto; }
+.flow svg { display: block; width: 100%; min-width: 680px; height: auto; }
+.flow .box { fill: var(--panel-2); stroke: var(--line); }
+.flow .t1 { font-family: var(--display); font-size: 15px; font-weight: 600; fill: var(--fg); }
+.flow .t2 { font-family: var(--mono); font-size: 11.5px; fill: var(--mute); }
+.flow .lab { font-family: var(--mono); font-size: 11px; fill: var(--mute); }
+.flow .wire { fill: none; stroke: var(--line); stroke-width: 2; }
+.comps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.comp { border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.comp h3 { font-size: 17px; }
+.comp p { color: var(--soft); font-size: 14px; }
+.comp ul { margin: 0; padding-left: 18px; color: var(--mute); font-size: 13.5px; display: grid; gap: 4px; }
+.det { margin-top: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr); gap: 24px; align-items: center; }
+.det h3 { font-size: 17px; margin-bottom: 8px; }
+.det p { color: var(--soft); font-size: 14px; }
+.det-svg { overflow-x: auto; min-width: 0; }
+.det-svg svg { display: block; width: 100%; min-width: 560px; height: auto; }
+.det-svg .seg { fill: var(--panel-2); stroke: var(--line); transition: fill .15s; }
+.det-svg .seg.on { fill: #2a3240; stroke: var(--mute); }
+.det-svg .seg.on.blk { fill: var(--fg); }
+.det-svg .st { font-family: var(--mono); font-size: 11px; fill: var(--mute); }
+.det-svg .st.on { fill: var(--fg); }
+.det-svg .st.on.blk { fill: var(--bg); }
+.det-svg .wave { fill: none; stroke: var(--fg); stroke-width: 2; }
+.det-svg .ax { font-family: var(--mono); font-size: 11px; fill: var(--mute); }
+.det-svg .evt { fill: var(--geo); }
+
+/* ворота */
+.gate-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.stage { display: grid; gap: 10px; min-width: 0; }
+.stage figure { margin: 0; position: relative; border-radius: 14px; overflow: hidden; background: #000; aspect-ratio: 3 / 2; max-width: 100%; }
+.stage figure img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.stage figcaption { position: absolute; left: 14px; bottom: 12px; right: 14px; font-family: var(--mono); font-size: 12px; color: #d4dae4; text-shadow: 0 1px 6px #000; }
+.thumbs { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.thumbs button { padding: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #000; cursor: pointer; aspect-ratio: 1; opacity: .6; transition: opacity .2s, border-color .2s; }
+.thumbs button img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumbs button[aria-pressed="true"], .thumbs button:hover { opacity: 1; border-color: var(--geo); }
+.modes-box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.sim { aspect-ratio: 1.2; max-width: 100%; }
+.sim svg { width: 100%; height: 100%; overflow: visible; display: block; }
+.sim .ring { fill: none; stroke: var(--mode); transition: stroke .3s; }
+.sim .glow { stroke-width: 16; opacity: .38; filter: url(#blur); }
+.sim .core { stroke-width: 7; }
+.sim .rear { opacity: .55; }
+.sim .node { fill: #e9eef3; }
+.sim .lug { fill: var(--geo); }
+.sim .beam { stroke: var(--mute); stroke-width: 1.2; stroke-dasharray: 5 5; opacity: .5; }
+.sim[data-anim="blink"] .ring { animation: blink 0.5s steps(1, end) infinite; }
+.sim[data-anim="identify"] .ring { animation: blink 0.5s steps(1, end) 4; }
+@keyframes blink { 50% { stroke: #2a303b; } }
+.modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.modes button { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 2px 9px; align-items: center; text-align: left; padding: 8px 10px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; cursor: pointer; }
+.modes button i { width: 12px; height: 12px; border-radius: 3px; background: var(--c); grid-row: span 2; box-shadow: 0 0 8px var(--c); }
+.modes button code { font-family: var(--mono); font-size: 12.5px; }
+.modes button span { font-size: 12px; color: var(--mute); }
+.modes button[aria-pressed="true"] { border-color: var(--mode); background: #1d2330; }
+.mqtt { font-family: var(--mono); font-size: 12px; color: var(--soft); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow-x: auto; white-space: pre; }
+.mqtt em { font-style: normal; color: var(--geo); }
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin-top: 28px; }
+.feature { background: var(--bg); padding: 0 0 22px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.feature img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; max-width: 100%; }
+.feature h3 { font-size: 16px; padding-inline: 20px; }
+.feature p { color: #b9c0cc; font-size: 14px; padding-inline: 20px; }
+.feature .k { font-family: var(--mono); font-size: 12px; color: var(--geo); padding-inline: 20px; }
+
+/* регламент */
+.rules { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.rule { border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 8px; align-content: start; background: var(--panel); min-width: 0; }
+.rule .eyebrow { color: var(--geo); }
+.rule b { font-family: var(--display); font-size: 17px; font-weight: 600; line-height: 1.2; }
+.rule p { color: var(--soft); font-size: 13.5px; }
+.roles { display: flex; gap: 6px; flex-wrap: wrap; }
+.roles span { font-size: 12px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); display: inline-flex; align-items: center; gap: 6px; color: var(--soft); }
+.roles span::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.rules-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+.tbl { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--panel); min-width: 0; overflow-x: auto; }
+.tbl table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.tbl th { text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); font-weight: 400; padding: 0 8px 8px 0; }
+.tbl td { padding: 8px 8px 8px 0; border-top: 1px solid var(--line); }
+.tbl h3, .states h3 { font-size: 15px; margin-bottom: 12px; }
+.states { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--panel); min-width: 0; }
+.chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.chain span { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2); }
+.chain span.hot { border-color: var(--fg); background: var(--fg); color: var(--bg); }
+.chain i { font-style: normal; color: var(--mute); }
+.states p { color: var(--mute); font-size: 13px; margin-top: 12px; }
+
+/* паспорт */
+.specs-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+.specs { display: grid; gap: 26px; min-width: 0; }
+.specs h3 { font-family: var(--mono); font-weight: 600; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--mute); margin-bottom: 6px; }
+.specs dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+.specs dt, .specs dd { margin: 0; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.specs dt { color: var(--mute); padding-right: 16px; }
+.specs dd { font-variant-numeric: tabular-nums; }
+.kit { display: grid; gap: 14px; }
+.kit figure { margin: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+.kit figure img { display: block; width: 100%; max-width: 100%; }
+.kit ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.kit li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.kit li b { font-family: var(--mono); font-weight: 600; font-size: 13px; white-space: nowrap; }
+.parts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 24px; }
+.parts figure { margin: 0; display: grid; gap: 6px; }
+.parts img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; display: block; }
+.parts figcaption { font-size: 12px; color: var(--mute); }
+
+.arena { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); margin-top: 28px; }
+.arena img { display: block; width: 100%; max-width: 100%; }
+.arena .over { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 24px; background: linear-gradient(transparent, rgba(5, 7, 10, .92)); display: grid; gap: 6px; }
+.arena .over p { color: var(--soft); max-width: 62ch; font-size: 14px; }
+.docs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.docs div { border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 6px; align-content: start; background: var(--panel); min-width: 0; }
+.docs b { font-family: var(--mono); font-size: 12.5px; color: var(--geo); }
+.docs span { font-size: 13.5px; color: var(--soft); }
+footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; color: var(--mute); font-size: 13px; }
+
+/* шилдик UbV */
+.ubv { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 5;
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 7px; border-radius: 999px; text-decoration: none;
+  background: rgba(18, 22, 30, .86); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  font-family: var(--mono); font-size: 11.5px; color: var(--mute); transition: border-color .2s, color .2s; }
+.ubv:hover { border-color: var(--ubv); color: var(--fg); }
+.ubv svg { width: 20px; height: 20px; flex: none; }
+.ubv b { color: var(--ubv); font-weight: 600; letter-spacing: .02em; }
+.ubv-inline { position: static; backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+@media (max-width: 980px) {
+  .hero, .game, .gate-grid, .specs-grid, .det { grid-template-columns: minmax(0, 1fr); }
+  .rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .features, .comps { grid-template-columns: minmax(0, 1fr); }
+  .parts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .facts div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .facts div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .hud, .rules-2 { grid-template-columns: minmax(0, 1fr); }
+  .gates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rules { grid-template-columns: minmax(0, 1fr); }
+  .thumbs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .parts3 { grid-template-columns: minmax(0, 1fr); }
+  .parts3 div + div { border-left: 0; border-top: 1px solid var(--line); }
+  .board { grid-template-columns: auto minmax(0, 1fr); }
+  .ctl { grid-column: 1 / -1; }
+  .score { font-size: 28px; }
+  .arena .over { position: static; background: var(--panel); }
+  .ubv { display: none; }
+  .ubv.ubv-inline { display: inline-flex; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .sim .ring { animation: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 22 26" aria-hidden="true"><path d="M11 1 L21 25 L11 19.5 L1 25 Z M11 8.5 L5.6 21.4 L11 18.3 L16.4 21.4 Z" fill="var(--geo)" fill-rule="evenodd"/></svg>
+      <span>МКБ ИТМО <span class="x">×</span> GEOSCAN</span>
+    </div>
+    <nav class="nav" aria-label="Разделы">
+      <a href="#game">Игра</a><a href="#pak">Комплекс</a><a href="#gate">Ворота</a><a href="#rules">Регламент</a><a href="#specs">Паспорт</a><a href="../../">UbVProject ↗</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div class="hero-text">
+      <p class="eyebrow">Программно-аппаратный комплекс · дрон-пионербол</p>
+      <h1>Dronegate<br>судит <em>сам</em></h1>
+      <p class="lead">Ворота ловят пролёт дрона ИК-барьером, сервер засчитывает гол и перекрашивает ворота, судья ведёт матч из браузера. Никто не спорит, был ли пролёт.</p>
+      <div class="parts3">
+        <div><b>Ворота ×4</b><span>ИК-барьер, RGBW, Wi-Fi</span></div>
+        <div><b>Сервер</b><span>счёт, таймер, миграция</span></div>
+        <div><b>Пульт</b><span>судья в браузере</span></div>
+      </div>
+    </div>
+    <figure class="hero-img"><img src="img/hero.jpg" alt="Ворота Dronegate v2 светятся красным: шестиугольная рама с коробкой электроники снизу"></figure>
+  </div>
+  <div class="facts">
+    <div><b class="num">Ø400<small>мм</small></b><span>проём, как кольцо в регламенте</span></div>
+    <div><b class="num">3<small>луча</small></b><span>пролёт не проскочит мимо</span></div>
+    <div><b class="num">3<small>мс</small></b><span>подтверждение перекрытия</span></div>
+    <div><b class="num">2<small>с</small></b><span>heartbeat каждых ворот</span></div>
+  </div>
+
+  <section id="game">
+    <div class="game">
+      <div class="game-text">
+        <p class="eyebrow">Что такое дрон-пионербол</p>
+        <h2>Командная игра дронов в сетке</h2>
+        <p style="color:var(--soft)">Две команды по три пилота управляют дронами в защитных сферах. На поле четверо ворот-колец, часть из них горит цветом команд. Пролёт через ворота своего цвета — гол.</p>
+        <ul>
+          <li><i>1</i><span>Поле 3 × 6 × 3 м, огорожено сеткой. На каждой половине по паре ворот, центры на высоте 1 и 2 м.</span></li>
+          <li><i>2</i><span>На старте верхние противоположные ворота загораются синим и красным, остальные белые.</span></li>
+          <li><i>3</i><span>Пролёт любого дрона через ворота цвета команды засчитывается этой команде в момент срабатывания ИК-датчика.</span></li>
+          <li><i>4</i><span>Забитые ворота 5 секунд мигают белым и голов не дают. Потом цвет уходит на случайные свободные ворота.</span></li>
+          <li><i>5</i><span>Раунд — 3 минуты, матч — до двух выигранных раундов.</span></li>
+        </ul>
+      </div>
+      <div class="demo" id="demo">
+        <div class="board">
+          <div class="score"><span class="b num" id="sb">0</span><span class="c">:</span><span class="r num" id="sr">0</span></div>
+          <div class="clock"><b id="clk">3:00</b><span class="phase" id="phase" data-p="countdown">отсчёт</span></div>
+          <div class="ctl"><button type="button" id="play">Пауза</button><button type="button" id="restart">Заново</button></div>
+        </div>
+        <canvas id="field" aria-label="Симуляция матча: вид сбоку на поле 6 × 3 м, дроны двух команд и четверо ворот"></canvas>
+        <div class="hud">
+          <div><p class="lbl">Ворота</p><div class="gates" id="gates"></div></div>
+          <div><p class="lbl">Журнал сервера</p><div class="log" id="log"></div></div>
+        </div>
+        <p class="demo-note">Симуляция. Вид сбоку, время ускорено в 6 раз. Табло, карточки ворот и журнал повторяют судейский пульт.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="pak">
+    <div class="sec-head">
+      <p class="eyebrow">Комплекс</p>
+      <h2>Трое участников и один брокер</h2>
+      <p>Ворота не хранят состояние игры: они сообщают о пролётах и выполняют команды подсветки. Поэтому любые ворота взаимозаменяемы и отличаются только номером.</p>
+    </div>
+    <div class="flow">
+      <svg viewBox="0 0 1000 250" role="img" aria-label="Схема: ворота отправляют события через MQTT-брокер на игровой сервер, сервер шлёт команды обратно и состояние на пульт">
+        <path id="p-ev" class="wire" d="M215,92 C270,92 270,92 330,92 L525,92 C560,92 560,92 600,92"/>
+        <path id="p-cmd" class="wire" d="M600,152 L525,152 L330,152 C270,152 270,152 215,152"/>
+        <path id="p-ws" class="wire" d="M790,100 L860,100"/>
+        <path id="p-http" class="wire" d="M860,145 L790,145"/>
+        <g>
+          <rect class="box" x="20" y="38" width="195" height="170" rx="12"/>
+          <text class="t1" x="40" y="66">Ворота № 1–4</text>
+          <text class="t2" x="40" y="86">ESP32-C3 · FreeRTOS</text>
+          <text class="t2" x="40" y="104">ИК-барьер 38 кГц</text>
+          <text class="t2" x="40" y="122">RGBW-лента 12 В</text>
+          <g id="mini-gates" transform="translate(40 150)"></g>
+        </g>
+        <g>
+          <rect class="box" x="330" y="58" width="195" height="128" rx="12"/>
+          <text class="t1" x="350" y="88">MQTT-брокер</text>
+          <text class="t2" x="350" y="108">Eclipse Mosquitto</text>
+          <text class="t2" x="350" y="126">TCP 1883 · Docker</text>
+        </g>
+        <g>
+          <rect class="box" x="600" y="58" width="190" height="128" rx="12"/>
+          <text class="t1" x="620" y="88">Игровой сервер</text>
+          <text class="t2" x="620" y="108">Python 3.11 · FastAPI</text>
+          <text class="t2" x="620" y="126">aiomqtt · Pydantic v2</text>
+        </g>
+        <g>
+          <rect class="box" x="860" y="58" width="125" height="128" rx="12"/>
+          <text class="t1" x="876" y="88">Пульт</text>
+          <text class="t2" x="876" y="108">браузер</text>
+          <text class="t2" x="876" y="126">WebSocket /ws</text>
+        </g>
+        <text class="lab" x="232" y="82">passage · QoS 1</text>
+        <text class="lab" x="232" y="172">set_color</text>
+        <text class="lab" x="545" y="82">события</text>
+        <text class="lab" x="545" y="172">команды</text>
+        <text class="lab" x="795" y="90">состояние</text>
+        <text class="lab" x="795" y="165">действия</text>
+        <text class="lab" x="20" y="232">Wi-Fi · MQTT</text>
+        <text class="lab" x="600" y="232">одна команда docker compose up</text>
+        <g id="packets"></g>
+      </svg>
+    </div>
+    <div class="comps">
+      <div class="comp">
+        <p class="eyebrow">Ворота</p>
+        <h3>Ловят пролёт и светятся</h3>
+        <p>Прошивка на C++ под ESP-IDF, три задачи FreeRTOS. Обработка пролёта имеет высший приоритет и не ждёт подсветку.</p>
+        <ul><li>метка времени с точностью 1 мкс, SNTP</li><li>event_id UUID v4 против двойных голов</li><li>8 режимов индикации, ШИМ 5 кГц</li></ul>
+      </div>
+      <div class="comp">
+        <p class="eyebrow">Игровой сервер</p>
+        <h3>Ведёт счёт и миграцию</h3>
+        <p>Засчитывает гол только активным воротам и только во время игры, выбирает новые ворота для цвета команды, следит за связью.</p>
+        <ul><li>3 пресета регламента, можно править</li><li>компенсированное время до 120 с</li><li>аварийная пауза, если ворота пропали на 4 с</li></ul>
+      </div>
+      <div class="comp">
+        <p class="eyebrow">Судейский пульт</p>
+        <h3>Весь матч на одном экране</h3>
+        <p>Одностраничное веб-приложение, обновляется без перезагрузки. Работает на ноутбуке или планшете в той же Wi-Fi-сети.</p>
+        <ul><li>старт, пауза, финиш, ручная правка счёта</li><li>карточки ворот: цвет, RSSI, пролёты</li><li>кнопка «Поморгать» — найти ворота на поле</li></ul>
+      </div>
+    </div>
+    <div class="det">
+      <div>
+        <h3>Как ворота отличают дрон от помехи</h3>
+        <p>Короткий разрыв луча считается помехой. Пролёт засчитывается, если луч перекрыт дольше 3 мс, а снова готовы ворота, когда луч держится 10 мс. Событие несёт время начала перекрытия.</p>
+      </div>
+      <div class="det-svg">
+        <svg viewBox="0 0 1000 150" role="img" aria-label="Временная диаграмма детектора: помеха отброшена, подтверждение 3 мс, пролёт, восстановление 10 мс">
+          <text class="ax" x="0" y="22">ИК-луч</text>
+          <path class="wave" d="M90,40 L250,40 L250,14 L268,14 L268,40 L380,40 L380,14 L720,14 L720,40 L1000,40"/>
+          <text class="ax" x="252" y="58">помеха</text>
+          <g id="segs"></g>
+          <path class="evt" d="M523,118 l7,12 l-14,0 z"/>
+          <text class="ax" x="540" y="132">passage → MQTT, QoS 1</text>
+          <line id="head" x1="90" y1="6" x2="90" y2="104" stroke="var(--geo)" stroke-width="2"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section id="gate">
+    <div class="sec-head">
+      <p class="eyebrow">Ворота v2 «Шестиугольник»</p>
+      <h2>Рама светится целиком, печать — только узлы</h2>
+      <p>Две шестиугольные рамки из белой электротрубы на расстоянии 150 мм. Лента внутри труб, электроника — в коробке снизу, провода спрятаны в трубы. Крепление на сетку за ушки в форме стрелки Геоскана.</p>
+    </div>
+    <div class="gate-grid">
+      <div class="stage">
+        <figure>
+          <img id="main-img" src="img/front.jpg" alt="Ворота спереди в режиме blue">
+          <figcaption id="main-cap">Спереди, режим blue: проём 400 мм в свету</figcaption>
+        </figure>
+        <div class="thumbs" id="thumbs">
+          <button aria-pressed="true" data-src="img/front.jpg" data-cap="Спереди, режим blue: проём 400 мм в свету"><img src="img/front.jpg" alt="Вид спереди"></button>
+          <button aria-pressed="false" data-src="img/hero.jpg" data-cap="Режим red — активные ворота красной команды"><img src="img/hero.jpg" alt="Вид 3/4"></button>
+          <button aria-pressed="false" data-src="img/rear.jpg" data-cap="Режим yellow — отсчёт перед стартом и пауза"><img src="img/rear.jpg" alt="Вид сзади сверху"></button>
+          <button aria-pressed="false" data-src="img/box.jpg" data-cap="Коробка: номер ворот, окно-стрелка в цвет команды, тумблер и зарядка сбоку"><img src="img/box.jpg" alt="Коробка электроники"></button>
+          <button aria-pressed="false" data-src="img/node.jpg" data-cap="Узел вершины, ушко-стрелка и ИК-хомут на трубе глубины"><img src="img/node.jpg" alt="Узел крупно"></button>
+          <button aria-pressed="false" data-src="img/arena.jpg" data-cap="Поле 3×6 м: по паре ворот на торцах, центры на 1 и 2 м"><img src="img/arena.jpg" alt="Арена"></button>
+          <button aria-pressed="false" data-src="img/catalog.jpg" data-cap="Печатные детали, трубы и АКБ — комплект на одни ворота"><img src="img/catalog.jpg" alt="Каталог деталей"></button>
+        </div>
+      </div>
+      <div class="modes-box">
+        <p class="eyebrow">Режимы подсветки · нажмите</p>
+        <div class="sim" id="sim">
+          <svg viewBox="-260 -240 520 480" role="img" aria-label="Ворота спереди: две рамки и три ИК-луча">
+            <defs><filter id="blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="9"/></filter></defs>
+            <g class="rear" transform="translate(26 -20) scale(.93)">
+              <polygon class="ring glow" points="200,0 100,173 -100,173 -200,0 -100,-173 100,-173"/>
+              <polygon class="ring core" points="200,0 100,173 -100,173 -200,0 -100,-173 100,-173"/>
+            </g>
+            <line class="beam" x1="-182" y1="0" x2="182" y2="0"/>
+            <line class="beam" x1="-91" y1="158" x2="91" y2="-158"/>
+            <line class="beam" x1="91" y1="158" x2="-91" y2="-158"/>
+            <polygon class="ring glow" points="200,0 100,173 -100,173 -200,0 -100,-173 100,-173"/>
+            <polygon class="ring core" points="200,0 100,173 -100,173 -200,0 -100,-173 100,-173"/>
+            <g id="nodes"></g>
+          </svg>
+        </div>
+        <div class="modes" id="modes-list"></div>
+        <div class="mqtt" id="mqtt"></div>
+      </div>
+    </div>
+    <div class="features">
+      <article class="feature">
+        <img src="img/front.jpg" alt="Светящаяся рама спереди" loading="lazy">
+        <p class="k">ПВХ Ø25×1,5 + COB RGBW</p>
+        <h3>Труба работает рассеивателем</h3>
+        <p>Бесточечная лента внутри белой трубы, диодами к центру проёма. Контур светится ровно и виден пилоту с любого ракурса.</p>
+      </article>
+      <article class="feature">
+        <img src="img/node.jpg" alt="Узел вершины и ИК-хомут" loading="lazy">
+        <p class="k">TSAL6200 → TSSP4038</p>
+        <h3>Три луча через центр</h3>
+        <p>Лучи идут между противоположными вершинами в середине глубины. Самое большое место без луча — Ø133 мм, а дрон не меньше Ø220.</p>
+      </article>
+      <article class="feature">
+        <img src="img/box.jpg" alt="Коробка электроники" loading="lazy">
+        <p class="k">210 × 190 × 60 мм</p>
+        <h3>Коробка висит на двух трубах</h3>
+        <p>Сёдла защёлкиваются на нижние трубы. Тумблер, кнопка Pair, гнездо зарядки и USB-C вынесены на бок.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="rules">
+    <div class="sec-head">
+      <p class="eyebrow">Регламент 2.0 · коротко</p>
+      <h2>Правила, под которые сделан комплекс</h2>
+    </div>
+    <div class="rules">
+      <div class="rule"><p class="eyebrow">Площадка</p><b>3 × 6 × 3 м</b><p>Закрытое безопасное воздушное пространство в сетке, две равные половины.</p></div>
+      <div class="rule"><p class="eyebrow">Ворота</p><b>4 кольца Ø400</b><p>По паре на половину поля, центры на 1 и 2 м. ИК-датчики, яркая подсветка, Wi-Fi, своя АКБ.</p></div>
+      <div class="rule"><p class="eyebrow">Дроны</p><b>Сфера 220–250 мм</b><p>Защита всей винтомоторной группы, масса с АКБ до 400 г, напряжение до 17,4 В.</p></div>
+      <div class="rule"><p class="eyebrow">Команда</p><b>3 пилота</b><div class="roles"><span style="--c:#ff6b8a">нападающий</span><span style="--c:#ffd36b">полузащитник</span><span style="--c:#4fd18b">вратарь</span></div><p>Только визуальное управление, без автономных режимов и «круиз-контроля».</p></div>
+      <div class="rule"><p class="eyebrow">Гол</p><b>Пролёт через свой цвет</b><p>Полный или частичный пролёт любого дрона через ворота цвета команды. Момент гола — срабатывание ИК-датчика.</p></div>
+      <div class="rule"><p class="eyebrow">Миграция</p><b>5 с белым миганием</b><p>Забитые ворота не поражаемы 5 с, затем цвет принимают случайные свободные белые ворота.</p></div>
+      <div class="rule"><p class="eyebrow">Матч</p><b>Раунды по 3 мин</b><p>Матч до двух побед. Вторая ничья подряд — доп. время до первого гола. Сетка — олимпийская система.</p></div>
+      <div class="rule"><p class="eyebrow">Опционально</p><b>Баллы 1 · 2 · 3</b><p>5 с мигания — 1 балл, 15 с ровного света — 2, 3 с «жёлтой» фазы — 3. Поле 3×3×3 с тремя воротами или до 6 ворот.</p></div>
+    </div>
+    <div class="rules-2">
+      <div class="tbl">
+        <h3>Пресеты сервера</h3>
+        <table>
+          <thead><tr><th>Пресет</th><th>Матч</th><th>Отсчёт</th><th>После паузы</th><th>Миграция</th></tr></thead>
+          <tbody>
+            <tr><td>Стандартный</td><td>3:00</td><td>5 с</td><td>5 с</td><td>5 с</td></tr>
+            <tr><td>Блиц</td><td>1:30</td><td>3 с</td><td>3 с</td><td>3 с</td></tr>
+            <tr><td>Тренировка</td><td>5:00</td><td>5 с</td><td>5 с</td><td>5 с</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="states">
+        <h3>Состояния матча</h3>
+        <div class="chain" id="chain">
+          <span data-s="idle">Ожидание</span><i>→</i><span data-s="countdown">Отсчёт</span><i>→</i><span data-s="play">Игра</span><i>→</i><span data-s="extra">Доп. время</span><i>→</i><span data-s="finished">Завершён</span>
+        </div>
+        <p>Пауза включается судьёй или сама, если любые ворота пропали из сети дольше 4 с. Все ворота тогда горят жёлтым, а после отсчёта возвращают свои цвета.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="specs">
+    <div class="sec-head">
+      <p class="eyebrow">Паспорт ворот</p>
+      <h2>Характеристики и комплект</h2>
+    </div>
+    <div class="specs-grid">
+      <div class="specs">
+        <div>
+          <h3>Конструкция</h3>
+          <dl>
+            <dt>Габариты, Ш × В × Г</dt><dd>625 × 585 × 191 мм</dd>
+            <dt>Проём</dt><dd>шестиугольник, вписанная окружность Ø400 мм</dd>
+            <dt>Рама</dt><dd>2 шестиугольные рамки, шаг 150 мм, сборка без клея</dd>
+            <dt>Трубы</dt><dd>белая ПВХ-электротруба Ø25, 18 отрезков</dd>
+            <dt>Печатные детали</dt><dd>24 шт., PETG: 12 узлов, 6 хомутов, коробка, вставки</dd>
+            <dt>Масса</dt><dd>≈ 1,7 кг</dd>
+          </dl>
+        </div>
+        <div>
+          <h3>Детекция и связь</h3>
+          <dl>
+            <dt>ИК-барьер</dt><dd>3 луча, 940 нм, несущая 38 кГц</dd>
+            <dt>Детектор</dt><dd>3 мс перекрытия, 10 мс восстановления, 100 мс мёртвое время</dd>
+            <dt>Контроллер</dt><dd>ESP32-C3, FreeRTOS, ESP-IDF</dd>
+            <dt>Протокол</dt><dd>Wi-Fi 2,4 ГГц, MQTT: dronegate/event/{id}, dronegate/command/{id}</dd>
+          </dl>
+        </div>
+        <div>
+          <h3>Свет и питание</h3>
+          <dl>
+            <dt>Подсветка</dt><dd>COB RGBW 12 В, 2,95 м на обе рамки + окно-стрелка</dd>
+            <dt>АКБ</dt><dd>3S из элементов 21700, 11,1–12,6 В</dd>
+            <dt>Защита</dt><dd>BMS 20 А, предохранитель 10 А, силовой тумблер</dd>
+            <dt>Зарядка</dt><dd>12,6 В до 2 А через гнездо 5,5×2,1, без вскрытия</dd>
+          </dl>
+        </div>
+      </div>
+      <aside class="kit">
+        <figure><img src="img/catalog.jpg" alt="Детали комплекта, разложенные на столе" loading="lazy"></figure>
+        <p class="eyebrow">Комплект на одни ворота</p>
+        <ul>
+          <li>Узел 3-way с ушком-стрелкой<b>12 шт.</b></li>
+          <li>Труба рамки<b>12 шт.</b></li>
+          <li>Труба глубины<b>6 шт.</b></li>
+          <li>ИК-хомут с датчиком<b>6 шт.</b></li>
+          <li>Коробка электроники в сборе<b>1 шт.</b></li>
+          <li>Лента COB RGBW<b>2,95 м</b></li>
+          <li>Саморез 2,9×9,5<b>36 шт.</b></li>
+        </ul>
+      </aside>
+    </div>
+    <div class="parts">
+      <figure><img src="img/p01.jpg" alt="Узел 3-way" loading="lazy"><figcaption>Узел 3-way</figcaption></figure>
+      <figure><img src="img/p02.jpg" alt="Хомут ИК" loading="lazy"><figcaption>Хомут ИК</figcaption></figure>
+      <figure><img src="img/p03.jpg" alt="Корпус коробки" loading="lazy"><figcaption>Корпус</figcaption></figure>
+      <figure><img src="img/p04.jpg" alt="Крышка коробки с гравировкой МКБ" loading="lazy"><figcaption>Крышка</figcaption></figure>
+      <figure><img src="img/p05.jpg" alt="Шильд ИТМО × GEOSCAN" loading="lazy"><figcaption>Шильд</figcaption></figure>
+      <figure><img src="img/p08.jpg" alt="Ложемент АКБ" loading="lazy"><figcaption>Ложемент АКБ</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="arena">
+    <div class="arena">
+      <img src="img/arena.jpg" alt="Игровое поле с четырьмя воротами на защитной сетке" loading="lazy">
+      <div class="over">
+        <p class="eyebrow">На поле</p>
+        <h2>Четверо ворот, один сервер</h2>
+        <p>Синие и красные ворота наверху, белые внизу — так начинается каждый раунд. Дальше цвета мигрируют после каждого гола.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Молодёжное конструкторское бюро ИТМО × ГК «Геоскан» · 2026</span>
+    <a class="ubv ubv-inline" href="https://ubvproject.github.io" target="_blank" rel="noopener">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="var(--ubv)" stroke-width="9"><circle cx="27" cy="27" r="18"/><circle cx="73" cy="27" r="18"/><circle cx="27" cy="73" r="18"/><circle cx="73" cy="73" r="18"/></g><rect x="39" y="39" width="22" height="22" fill="var(--ubv)"/></svg>
+      powered by <b>UbV</b>
+    </a>
+  </footer>
+</div>
+
+<a class="ubv" href="https://ubvproject.github.io" target="_blank" rel="noopener" aria-label="powered by UbV">
+  <svg viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="var(--ubv)" stroke-width="9"><circle cx="27" cy="27" r="18"/><circle cx="73" cy="27" r="18"/><circle cx="27" cy="73" r="18"/><circle cx="73" cy="73" r="18"/></g><rect x="39" y="39" width="22" height="22" fill="var(--ubv)"/></svg>
+  powered by <b>UbV</b>
+</a>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var css = getComputedStyle(document.documentElement);
+  var C = {
+    red: css.getPropertyValue('--red').trim() || '#ff3b30',
+    blue: css.getPropertyValue('--blue').trim() || '#3b7bff',
+    white: css.getPropertyValue('--white').trim() || '#f4efe6',
+    yellow: css.getPropertyValue('--yellow').trim() || '#ffb020',
+    geo: css.getPropertyValue('--geo').trim() || '#ff5a1f',
+    line: css.getPropertyValue('--line').trim() || '#262d3a',
+    mute: css.getPropertyValue('--mute').trim() || '#8d96a7',
+    fg: css.getPropertyValue('--fg').trim() || '#e9edf3'
+  };
+
+  /* ---------- галерея ---------- */
+  var main = document.getElementById('main-img'), cap = document.getElementById('main-cap');
+  document.getElementById('thumbs').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    this.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+    main.src = b.dataset.src; main.alt = b.querySelector('img').alt; cap.textContent = b.dataset.cap;
+  });
+
+  /* ---------- режимы подсветки ---------- */
+  var MODES = [
+    { id: 'blue', c: C.blue, t: 'активные синих' },
+    { id: 'red', c: C.red, t: 'активные красных' },
+    { id: 'white', c: C.white, t: 'нейтральные' },
+    { id: 'migrate', c: C.white, t: 'миграция, 2 Гц', anim: 'blink' },
+    { id: 'yellow', c: C.yellow, t: 'отсчёт и пауза' },
+    { id: 'blink_yellow', c: C.yellow, t: 'резерв, 2 Гц', anim: 'blink' },
+    { id: 'identify', c: '#ffffff', t: 'поиск: 4 вспышки', anim: 'identify' },
+    { id: 'off', c: '#2a303b', t: 'выключено' }
+  ];
+  var sim = document.getElementById('sim'), list = document.getElementById('modes-list'), mq = document.getElementById('mqtt');
+  var ns = 'http://www.w3.org/2000/svg', nodes = document.getElementById('nodes');
+  for (var k = 0; k < 6; k++) {
+    var a = Math.PI / 3 * k, g = document.createElementNS(ns, 'g');
+    g.setAttribute('transform', 'translate(' + (200 * Math.cos(a)).toFixed(1) + ' ' + (-200 * Math.sin(a)).toFixed(1) + ') rotate(' + (90 - 60 * k) + ')');
+    g.innerHTML = '<path class="lug" d="M0,-52 L11,-22 L0,-28 L-11,-22 Z"/><polygon class="node" points="0,-17 14.7,-8.5 14.7,8.5 0,17 -14.7,8.5 -14.7,-8.5"/>';
+    nodes.appendChild(g);
+  }
+  function setMode(m, btn) {
+    document.documentElement.style.setProperty('--mode', m.c);
+    sim.dataset.anim = ''; void sim.offsetWidth; sim.dataset.anim = m.anim || '';
+    list.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === btn ? 'true' : 'false'); });
+    mq.innerHTML = 'dronegate/command/1\n{ "type": "set_color", "gate_id": 1,\n  "color": "<em>' + m.id + '</em>", "brightness": 128 }';
+  }
+  MODES.forEach(function (m, i) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.style.setProperty('--c', m.c);
+    b.innerHTML = '<i></i><code>' + m.id + '</code><span>' + m.t + '</span>';
+    b.addEventListener('click', function () { setMode(m, b); });
+    list.appendChild(b);
+    if (i === 0) setMode(m, b);
+  });
+
+  /* ---------- схема ПАК: пакеты ---------- */
+  var mg = document.getElementById('mini-gates');
+  for (var i = 0; i < 4; i++) {
+    var gg = document.createElementNS(ns, 'g');
+    gg.setAttribute('transform', 'translate(' + (i * 40 + 14) + ' 16)');
+    gg.innerHTML = '<polygon points="13,0 6.5,11.3 -6.5,11.3 -13,0 -6.5,-11.3 6.5,-11.3" fill="none" stroke-width="3.5" stroke="' +
+      [C.blue, C.white, C.white, C.red][i] + '"/><text x="0" y="30" text-anchor="middle" class="t2">' + (i + 1) + '</text>';
+    mg.appendChild(gg);
+  }
+  var pk = document.getElementById('packets');
+  function packet(path, color, dur, begin) {
+    var c = document.createElementNS(ns, 'circle');
+    c.setAttribute('r', '6'); c.setAttribute('fill', color);
+    c.innerHTML = '<animateMotion dur="' + dur + 's" begin="' + begin + 's" repeatCount="indefinite" calcMode="linear"><mpath href="#' + path + '"/></animateMotion>';
+    pk.appendChild(c);
+  }
+  packet('p-ev', C.geo, 3.2, 0); packet('p-ev', C.geo, 3.2, 1.6);
+  packet('p-cmd', C.blue, 3.2, 0.8); packet('p-cmd', C.red, 3.2, 2.4);
+  packet('p-ws', C.fg, 1.4, 0); packet('p-http', C.mute, 2.2, 0.5);
+  if (reduce) document.querySelector('.flow svg').pauseAnimations();
+
+  /* ---------- диаграмма детектора ---------- */
+  var SEG = [
+    { x0: 90, x1: 250, t: 'ARMED' }, { x0: 250, x1: 380, t: 'ARMED · помеха < 3 мс' },
+    { x0: 380, x1: 520, t: 'CONFIRM 3 мс' }, { x0: 520, x1: 720, t: 'BLOCKED', blk: 1 },
+    { x0: 720, x1: 860, t: 'WAIT_RESTORE 10 мс' }, { x0: 860, x1: 1000, t: 'ARMED' }
+  ];
+  var segs = document.getElementById('segs'), head = document.getElementById('head'), segEls = [];
+  SEG.forEach(function (s) {
+    var r = document.createElementNS(ns, 'rect');
+    r.setAttribute('x', s.x0 + 1); r.setAttribute('y', 70); r.setAttribute('width', s.x1 - s.x0 - 2); r.setAttribute('height', 32); r.setAttribute('rx', 4);
+    r.setAttribute('class', 'seg' + (s.blk ? ' blk' : ''));
+    var t = document.createElementNS(ns, 'text');
+    t.setAttribute('x', s.x0 + 10); t.setAttribute('y', 91); t.setAttribute('class', 'st' + (s.blk ? ' blk' : '')); t.textContent = s.t;
+    segs.appendChild(r); segs.appendChild(t); segEls.push([r, t]);
+  });
+  var tx = document.createElementNS(ns, 'text');
+  tx.setAttribute('x', 0); tx.setAttribute('y', 91); tx.setAttribute('class', 'ax'); tx.textContent = 'Состояние'; segs.appendChild(tx);
+
+  /* ---------- симуляция матча ---------- */
+  var cv = document.getElementById('field'), ctx = cv.getContext('2d');
+  var W = 6.8, H = 3.5, MX = 0.4, MY = 0.25, S = 100, DPR = 1;
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    var w = cv.clientWidth || 600; S = w / W;
+    cv.width = Math.round(w * DPR); cv.height = Math.round(w * H / W * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  function px(x) { return (MX + x) * S; }
+  function py(y) { return (H - MY - y) * S; }
+
+  var GATES = [
+    { n: 1, x: 0.35, y: 2, inw: 1, where: 'слева, 2 м', rssi: -42 },
+    { n: 2, x: 0.35, y: 1, inw: 1, where: 'слева, 1 м', rssi: -44 },
+    { n: 3, x: 5.65, y: 1, inw: -1, where: 'справа, 1 м', rssi: -43 },
+    { n: 4, x: 5.65, y: 2, inw: -1, where: 'справа, 2 м', rssi: -46 }
+  ];
+  var ROLE = { A: '#ff6b8a', M: '#ffd36b', K: '#4fd18b' };
+  var st, drones, logLines, last = 0, running = !reduce, visible = true;
+  var TEAM_RU = { blue: 'синих', red: 'красных' };
+
+  function reset() {
+    st = { phase: 'countdown', t: 0, clock: 180, sb: 0, sr: 0, end: 0 };
+    GATES.forEach(function (g) { g.color = 'yellow'; g.mig = 0; g.flash = 0; g.passes = 0; });
+    drones = [];
+    [['blue', 0.8], ['red', 5.2]].forEach(function (tm, ti) {
+      ['A', 'M', 'K'].forEach(function (role, ri) {
+        var x = tm[1] + (ti ? -1 : 1) * ri * 0.45;
+        drones.push({ team: tm[0], role: role, x: x, y: 0.13, vx: 0, vy: 0, tx: x, ty: 0.13, mode: 'idle', timer: 0, trail: [], seed: Math.random() * 10 });
+      });
+    });
+    logLines = [];
+    addLog('Отсчёт 3 с: все ворота жёлтые');
+  }
+  function fmt(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+  function addLog(t) { logLines.unshift((st ? '<b>' + fmt(st.clock) + '</b> ' : '') + t); logLines = logLines.slice(0, 5); dirty = true; }
+  var dirty = true;
+
+  function ownGate(team) { for (var i = 0; i < 4; i++) if (GATES[i].color === team && !GATES[i].mig) return GATES[i]; return null; }
+  function enemy(team) { return team === 'blue' ? 'red' : 'blue'; }
+  function find(team, role) { for (var i = 0; i < drones.length; i++) if (drones[i].team === team && drones[i].role === role) return drones[i]; }
+
+  function goal(g, d) {
+    g.mig = 2.2; g.color = 'migrate';
+    if (d.team === 'blue') st.sb++; else st.sr++;
+    addLog('гол ' + TEAM_RU[d.team] + ' · ворота ' + g.n + ' → migrate');
+    dirty = true;
+  }
+  function finishMig(g, team) {
+    g.mig = 0; g.color = 'white';
+    var free = GATES.filter(function (x) { return x !== g && x.color === 'white' && !x.mig; });
+    var pick = free[Math.floor(Math.random() * free.length)] || g;
+    pick.color = team;
+    addLog('ворота ' + pick.n + ' → ' + team);
+  }
+
+  function steer(d, dt, vmax) {
+    var dx = d.tx - d.x, dy = d.ty - d.y, dist = Math.hypot(dx, dy);
+    var sp = Math.min(vmax, dist * 2.4), dvx = dist > 1e-4 ? dx / dist * sp : 0, dvy = dist > 1e-4 ? dy / dist * sp : 0;
+    var k = Math.min(1, dt * 3.2);
+    d.vx += (dvx - d.vx) * k; d.vy += (dvy - d.vy) * k;
+    var ox = d.x;
+    d.x += d.vx * dt; d.y += d.vy * dt;
+    d.x = Math.max(0.12, Math.min(5.88, d.x)); d.y = Math.max(0.12, Math.min(2.85, d.y));
+    return [ox, dist];
+  }
+
+  function think(d, dt, tt) {
+    if (st.phase === 'countdown') { d.ty = 0.55 + (d.role === 'M' ? 0.3 : 0); return 1; }
+    if (st.phase === 'finished') { d.ty = 0.13; return 0.8; }
+    d.timer -= dt;
+    if (d.role === 'A') {
+      var g = (d.mode === 'through' || d.mode === 'around' || d.mode === 'exit') ? d.gate : ownGate(d.team);
+      if (!g) { if (d.timer <= 0) { d.tx = 1.5 + Math.random() * 3; d.ty = 0.7 + Math.random() * 1.6; d.timer = 1.2; d.mode = 'wander'; } return 1.4; }
+      if (d.gate !== g) { d.gate = g; d.mode = 'approach'; d.aim = (Math.random() - 0.5) * 0.3; }
+      if (d.mode === 'wander') d.mode = 'approach';
+      if (d.mode === 'approach') {
+        d.tx = g.x + g.inw * 0.85; d.ty = g.y + d.aim;
+        if (Math.hypot(d.tx - d.x, d.ty - d.y) < 0.12) {
+          var k = find(enemy(d.team), 'K');
+          var blocked = k && Math.abs(k.y - g.y) < 0.22 && Math.abs(k.x - (g.x + g.inw * 0.5)) < 0.3 && Math.random() < 0.55;
+          if (blocked) { d.mode = 'evade'; d.timer = 1.1; d.tx = 3 + (Math.random() - 0.5) * 1.6; d.ty = 0.6 + Math.random() * 1.8; }
+          else { d.mode = 'through'; d.tx = g.x - g.inw * 0.22; d.ty = g.y + d.aim * 0.4; }
+        }
+      } else if (d.mode === 'through') {
+        if (Math.abs(d.x - d.tx) < 0.06) { d.mode = 'around'; d.tx = g.x - g.inw * 0.2; d.ty = g.y + (g.y > 1.5 ? -0.45 : 0.45); }
+      } else if (d.mode === 'around') {
+        if (Math.abs(d.y - d.ty) < 0.08) { d.mode = 'exit'; d.tx = g.x + g.inw * 1.3; }
+      } else if (d.mode === 'exit') {
+        if (Math.hypot(d.tx - d.x, d.ty - d.y) < 0.15) { d.mode = 'approach'; d.aim = (Math.random() - 0.5) * 0.3; }
+      } else if (d.mode === 'evade') {
+        if (d.timer <= 0) d.mode = 'approach';
+      }
+      return d.mode === 'through' ? 1.9 : 1.5;
+    }
+    if (d.role === 'K') {
+      var eg = ownGate(enemy(d.team));
+      var att = find(enemy(d.team), 'A');
+      if (eg) {
+        d.tx = eg.x + eg.inw * 0.55;
+        var ty = eg.y + 0.12 * Math.sin(tt * 1.7 + d.seed);
+        if (att && Math.abs(att.x - eg.x) < 1.6) ty = eg.y + (att.y - eg.y) * 0.75;
+        d.ty = ty;
+      } else if (d.timer <= 0) { d.tx = 2 + Math.random() * 2; d.ty = 1 + Math.random(); d.timer = 1.5; }
+      return 1.05;
+    }
+    if (d.timer <= 0) { d.tx = 1.4 + Math.random() * 3.2; d.ty = 0.5 + Math.random() * 2; d.timer = 1.5 + Math.random() * 1.5; }
+    return 0.9;
+  }
+
+  function update(dt, tt) {
+    st.t += dt;
+    if (st.phase === 'countdown' && st.t > 3) {
+      st.phase = 'play'; st.t = 0;
+      GATES.forEach(function (g) { g.color = 'white'; });
+      GATES[0].color = 'blue'; GATES[3].color = 'red';
+      addLog('старт: ворота 1 → blue, 4 → red');
+    } else if (st.phase === 'play') {
+      st.clock -= dt * 6;
+      if (st.clock <= 0) {
+        st.clock = 0; st.phase = 'finished'; st.t = 0;
+        GATES.forEach(function (g) { g.color = 'white'; g.mig = 0; });
+        addLog('раунд окончен ' + st.sb + ':' + st.sr);
+      }
+    } else if (st.phase === 'finished' && st.t > 4) { reset(); }
+    GATES.forEach(function (g) {
+      if (g.flash > 0) g.flash = Math.max(0, g.flash - dt * 3);
+      if (g.mig > 0) { g.mig -= dt; if (g.mig <= 0) finishMig(g, g.migTeam); }
+    });
+    drones.forEach(function (d) {
+      var vmax = think(d, dt, tt);
+      var r = steer(d, dt, vmax), ox = r[0];
+      GATES.forEach(function (g) {
+        if ((ox - g.x) * (d.x - g.x) < 0 && Math.abs(d.y - g.y) < 0.2) {
+          g.flash = 1; g.passes++; dirty = true;
+          if (st.phase === 'play' && g.color === d.team && !g.mig) { g.migTeam = d.team; goal(g, d); }
+          else if (st.phase === 'play' && g.color === 'migrate') addLog('пролёт · ворота ' + g.n + ' в миграции — гол не засчитан');
+        }
+      });
+      d.trail.push([d.x, d.y]); if (d.trail.length > 26) d.trail.shift();
+    });
+  }
+
+  function gateColor(g, tt) {
+    if (g.color === 'migrate') return (Math.floor(tt * 4) % 2) ? '#3a414d' : C.white;
+    return { blue: C.blue, red: C.red, white: C.white, yellow: C.yellow }[g.color] || C.white;
+  }
+
+  function draw(tt) {
+    var w = cv.width / DPR, h = cv.height / DPR;
+    ctx.clearRect(0, 0, w, h);
+    // сетка БВП
+    ctx.strokeStyle = 'rgba(141,150,167,.16)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (var gx = 0; gx <= 6.001; gx += 0.25) { ctx.moveTo(px(gx), py(0)); ctx.lineTo(px(gx), py(3)); }
+    for (var gy = 0; gy <= 3.001; gy += 0.25) { ctx.moveTo(px(0), py(gy)); ctx.lineTo(px(6), py(gy)); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(141,150,167,.5)'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(px(0), py(3), 6 * S, 3 * S);
+    ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.moveTo(px(3), py(0)); ctx.lineTo(px(3), py(3)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.mute; ctx.font = '11px "JetBrains Mono", monospace';
+    ctx.textAlign = 'right';
+    [1, 2, 3].forEach(function (m) { ctx.fillText(m + ' м', px(0) - 6, py(m) + 4); });
+    ctx.textAlign = 'center'; ctx.fillText('6 м', px(3), py(0) + 16);
+    // ворота
+    GATES.forEach(function (g) {
+      var col = gateColor(g, tt);
+      ctx.save();
+      ctx.shadowColor = col; ctx.shadowBlur = 16; ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      [0, 0.15].forEach(function (dz) {
+        var xx = px(g.x + g.inw * (dz - 0.075));
+        ctx.beginPath(); ctx.moveTo(xx, py(g.y + 0.22)); ctx.lineTo(xx, py(g.y - 0.22)); ctx.stroke();
+      });
+      ctx.restore();
+      ctx.fillStyle = '#2b3038'; ctx.fillRect(px(g.x) - 0.07 * S, py(g.y - 0.3), 0.14 * S, 0.06 * S);
+      if (g.flash > 0) {
+        ctx.strokeStyle = 'rgba(255,90,31,' + g.flash + ')'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(px(g.x), py(g.y + 0.2)); ctx.lineTo(px(g.x), py(g.y - 0.2)); ctx.stroke();
+      }
+      ctx.fillStyle = C.mute; ctx.textAlign = 'center';
+      ctx.fillText(String(g.n), px(g.x + g.inw * 0.32), py(g.y + 0.3));
+    });
+    // дроны
+    drones.forEach(function (d) {
+      var col = d.team === 'blue' ? C.blue : C.red;
+      ctx.lineWidth = 2;
+      for (var i = 1; i < d.trail.length; i++) {
+        ctx.strokeStyle = (d.team === 'blue' ? 'rgba(59,123,255,' : 'rgba(255,59,48,') + (i / d.trail.length * 0.35).toFixed(3) + ')';
+        ctx.beginPath(); ctx.moveTo(px(d.trail[i - 1][0]), py(d.trail[i - 1][1])); ctx.lineTo(px(d.trail[i][0]), py(d.trail[i][1])); ctx.stroke();
+      }
+      var bob = d.y > 0.2 ? Math.sin(tt * 6 + d.seed) * 0.012 : 0;
+      var cx = px(d.x), cy = py(d.y + bob), r = 0.12 * S;
+      ctx.fillStyle = 'rgba(11,14,19,.75)'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
+      ctx.strokeStyle = 'rgba(233,237,243,.35)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx - r * 0.7, cy); ctx.lineTo(cx + r * 0.7, cy); ctx.stroke();
+      ctx.fillStyle = ROLE[d.role]; ctx.beginPath(); ctx.arc(cx, cy, r * 0.32, 0, 7); ctx.fill();
+    });
+  }
+
+  var gatesEl = document.getElementById('gates'), logEl = document.getElementById('log');
+  var sbEl = document.getElementById('sb'), srEl = document.getElementById('sr'), clk = document.getElementById('clk'), ph = document.getElementById('phase');
+  var chain = document.getElementById('chain');
+  var PH = { countdown: 'отсчёт', play: 'игра', finished: 'завершён' };
+  GATES.forEach(function (g) {
+    var c = document.createElement('div'); c.className = 'gcard';
+    c.innerHTML = '<div class="h"><b>В' + g.n + '</b><i class="sw"></i></div><code></code><span></span>';
+    gatesEl.appendChild(c); g.el = c;
+  });
+  function hud() {
+    sbEl.textContent = st.sb; srEl.textContent = st.sr; clk.textContent = fmt(st.clock);
+    ph.textContent = PH[st.phase]; ph.dataset.p = st.phase;
+    chain.querySelectorAll('span').forEach(function (s) { s.classList.toggle('hot', s.dataset.s === st.phase); });
+    if (!dirty) return;
+    GATES.forEach(function (g) {
+      var col = { blue: C.blue, red: C.red, white: C.white, yellow: C.yellow, migrate: C.white }[g.color];
+      g.el.style.setProperty('--c', col);
+      g.el.querySelector('code').textContent = g.color;
+      g.el.querySelector('span').textContent = g.where + ' · ' + g.rssi + ' дБм · пролётов ' + g.passes;
+    });
+    logEl.innerHTML = logLines.map(function (l) { return '<div>' + l + '</div>'; }).join('');
+    dirty = false;
+  }
+
+  function detector(tt) {
+    var x = 90 + ((tt % 7) / 7) * 910;
+    head.setAttribute('x1', x); head.setAttribute('x2', x);
+    SEG.forEach(function (s, i) {
+      var on = x >= s.x0 && x < s.x1;
+      segEls[i][0].classList.toggle('on', on); segEls[i][1].classList.toggle('on', on);
+    });
+  }
+
+  var t0 = performance.now(), simT = 0;
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000 || 0.016); last = now;
+    var tt = (now - t0) / 1000;
+    if (running && visible) { simT += dt; update(dt, simT); }
+    draw(simT); hud();
+    if (!reduce) detector(tt);
+    requestAnimationFrame(frame);
+  }
+
+  var playBtn = document.getElementById('play');
+  playBtn.textContent = running ? 'Пауза' : 'Пуск';
+  playBtn.addEventListener('click', function () { running = !running; playBtn.textContent = running ? 'Пауза' : 'Пуск'; });
+  document.getElementById('restart').addEventListener('click', function () { reset(); dirty = true; });
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) { visible = es[0].isIntersecting; }).observe(document.getElementById('demo'));
+  }
+  window.addEventListener('resize', resize);
+  resize(); reset();
+  if (reduce) {
+    // статичный кадр середины матча
+    st.phase = 'play'; GATES.forEach(function (g) { g.color = 'white'; }); GATES[0].color = 'blue'; GATES[3].color = 'red';
+    for (var i = 0; i < 300; i++) update(0.03, i * 0.03);
+    detector(3.2);
+  }
+  requestAnimationFrame(function (n) { last = n; frame(n); });
+})();
+</script>
+</body>
+</html>
