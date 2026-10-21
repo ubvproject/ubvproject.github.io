@@ -1,17 +1,18 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Michroma&family=Unbounded:wght@500&display=swap">
 <style>
-  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #fff; }
-  body { display: flex; font-family: "PT Sans", sans-serif; color: #1d1d1b; -webkit-font-smoothing: antialiased; }
-  .l { flex: 1; padding: 64px 56px 56px 72px; display: flex; flex-direction: column; border-left: 14px solid #2b5741; }
-  .brand { display: flex; align-items: center; gap: 16px; font-weight: 700; font-size: 22px; letter-spacing: .3em; }
-  .brand svg { width: 44px; height: 44px; }
-  .kind { margin-top: auto; font-size: 20px; letter-spacing: .4em; text-transform: uppercase; color: #40403e; }
-  h1 { font-size: {{title_size}}px; line-height: 1.14; text-transform: uppercase; margin: 16px 0 0; }
-  .meta { margin-top: 26px; padding-top: 16px; border-top: 2px solid #1d1d1b; font-size: 22px; color: #40403e; display: flex; gap: 28px; }
-  .meta .code { font-family: "PT Mono", monospace; color: #2b5741; }
-  .r { width: 380px; background: #f3f3f1; display: flex; align-items: center; justify-content: center; }
-  .r img { width: 300px; border: 1px solid #d9d9d6; box-shadow: 0 10px 30px rgba(0,0,0,.12); }
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #0D0E10; }
+  body { display: flex; color: #E9E9E6; -webkit-font-smoothing: antialiased; font-family: "Unbounded", sans-serif; }
+  .l { flex: 1; padding: 62px 56px 56px 72px; display: flex; flex-direction: column; position: relative; }
+  .brand { display: flex; align-items: center; gap: 18px; font: 400 22px "Michroma", sans-serif; letter-spacing: .18em; }
+  .brand svg { width: 52px; height: 52px; }
+  .kind { margin-top: auto; font: 500 18px "IBM Plex Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: #FF5A1F; }
+  h1 { font-size: {{title_size}}px; line-height: 1.1; margin: 16px 0 0; font-weight: 500; letter-spacing: -.01em; }
+  .meta { margin-top: 26px; padding-top: 16px; border-top: 1px solid #2A2D33; font: 500 20px "IBM Plex Mono", monospace; color: #A4A9B0; display: flex; gap: 28px; }
+  .meta .code { color: #FF7A45; }
+  .r { width: 400px; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 50%, rgba(255,90,31,.16), transparent 62%); }
+  .r img { width: 300px; border: 1px solid #2A2D33; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
 </style></head>
 <body>
   <div class="l">

@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Сайт UbVProject: добавление документов и сборка страниц.
+"""Сайт UBVPROJECT: редактор, документы и сборка страниц.
 
-    python3 ubv.py add путь/к/файлу.pdf     добавить документ (или новую редакцию) — спросит код, название, аннотацию
-    python3 ubv.py link UBV-AS-2026-01 URL   привязать пост в канале к документу
-    python3 ubv.py build                     пересобрать все страницы из _content/*.json
+    python3 ubv.py cms                       редактор сайта в браузере: http://localhost:8091/admin/  (правки только локально)
+    python3 ubv.py build [--images]          пересобрать все страницы из _content/*.json (--images — заново картинки превью)
     python3 ubv.py preview                   открыть сайт локально: http://localhost:8090
+    python3 ubv.py add путь/к/файлу.pdf      добавить документ (или новую редакцию) — спросит код, название, аннотацию
+    python3 ubv.py web UBV-AS-2026-01        сделать веб-версию справки из её PDF (текст не меняется, сверка слово в слово)
+    python3 ubv.py link UBV-AS-2026-01 URL   привязать пост в канале к документу
     python3 ubv.py publish ["сообщение"]     собрать, закоммитить и отправить на GitHub
 
-Данные — _content/site.json (главная) и _content/docs.json (документы), шаблоны — _tools/templates/.
-Нужны: Google Chrome (картинки превью) и poppler (pdfinfo, pdftoppm): brew install poppler.
+Содержимое — _content/*.json (site, home, optimum, tech, news, projects, about, docs), тема — _tools/theme.py,
+assets/site.css, assets/site.js, пиктограммы — _tools/icons/. Нужны: Google Chrome (картинки превью),
+poppler (pdfinfo, pdftoppm, pdftohtml) и ImageMagick (веб-версия справки): brew install poppler imagemagick.
 """
 import datetime
 import html
@@ -26,6 +29,8 @@ TPL = os.path.join(ROOT, "_tools", "templates")
 SITE_JSON = os.path.join(CONTENT, "site.json")
 DOCS_JSON = os.path.join(CONTENT, "docs.json")
 PROJECTS_JSON = os.path.join(CONTENT, "projects.json")
+SECTIONS = ("site", "home", "optimum", "tech", "news", "projects", "about", "docs")
+sys.path.insert(0, os.path.join(ROOT, "_tools"))
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 MONTHS = "января февраля марта апреля мая июня июля августа сентября октября ноября декабря".split()
 
@@ -82,12 +87,10 @@ def logo():
         return f.read().strip().replace("<svg ", '<svg aria-hidden="true" ', 1)
 
 
-def page(site, *, root, path, title, og_title, description, og_image, content, og_type="website", nav_docs=""):
-    tg = site["telegram"]
-    return fill(tpl("base.html"), root=root, title=esc(title), og_title=esc(og_title), description=esc(description),
-                url=site["base_url"].rstrip("/") + "/" + path, og_image=site["base_url"].rstrip("/") + "/" + og_image,
-                og_type=og_type, nav_docs=nav_docs, logo=logo(), tg_url=esc(tg["url"]), tg_name=esc(tg["name"]),
-                year=datetime.date.today().year, content=content)
+def content():
+    """Всё содержимое сайта: {раздел: данные из _content/<раздел>.json}"""
+    return {k: load(os.path.join(CONTENT, k + ".json"), [] if k == "docs" else {}) for k in SECTIONS}
+
 
 
 def write(rel, text):
@@ -97,107 +100,63 @@ def write(rel, text):
         f.write(text)
 
 
-def registry(docs, root):
-    if not docs:
-        return '<p class="note">Документов пока нет.</p>'
-    rows = []
-    for d in docs:
-        href = "%sdocs/%s/" % (root, slug(d["code"]))
-        rows.append('<tr><td class="code">%s</td><td class="ttl"><a href="%s">%s</a><span class="kd">%s</span></td>'
-                    '<td class="date">%s</td><td class="pdf"><a href="%s%s">PDF ↓</a></td></tr>'
-                    % (esc(d["code"]), href, esc(d["short"]), esc(d["kind"] + (" · " + d["client"] if d.get("client") else "")),
-                       ru_date(d["date"]), href, esc(d["pdf"])))
-    return ('<table class="reg"><thead><tr><th>Код</th><th>Название</th><th class="date">Дата</th><th></th></tr></thead>'
-            "<tbody>%s</tbody></table>" % "".join(rows))
 
-
-def projects_table(projects, root):
-    """Проекты — готовые статичные страницы в projects/<slug>/, генератор их не трогает, только ссылается"""
-    if not projects:
-        return ""
-    rows = "".join('<tr><td class="code">%s</td><td class="ttl"><a href="%s%s">%s</a><span class="kd">%s</span></td>'
-                   '<td class="date">%s</td><td class="pdf"><a href="%s%s">Открыть →</a></td></tr>'
-                   % (esc(p["name"]), root, esc(p["path"]), esc(p["title"]), esc(p["kind"]), ru_date(p["date"]),
-                      root, esc(p["path"])) for p in projects)
-    return ('<section>\n  <h2 class="h">Проекты</h2>\n  <table class="reg"><thead><tr><th>Проект</th><th>Название</th>'
-            '<th class="date">Дата</th><th></th></tr></thead><tbody>%s</tbody></table>\n</section>' % rows)
-
-
-def dash(items):
-    return '<ul class="dash">%s</ul>' % "".join("<li>%s</li>" % esc(i) for i in items)
 
 
 # ---------- сборка ----------
 
 def build(images=False):
-    site, docs = load(SITE_JSON, {}), sorted(load(DOCS_JSON, []), key=lambda d: d["code"], reverse=True)
-    projects = sorted(load(PROJECTS_JSON, []), key=lambda p: p["date"], reverse=True)
-    tg = site["telegram"]
-
-    metrics = []
-    for m in site.get("metrics", []):
-        if m.get("auto") == "docs":
-            n = len(docs)
-            m = {"value": str(n), "label": plural(n, "документ", "документа", "документов") + " UBV-AS"}
-        metrics.append('<div><div class="big">%s</div><div class="lbl">%s</div></div>' % (esc(m["value"]), esc(m["label"])))
-
-    home = fill(tpl("home.html"), headline=esc(site["headline"]), lead=esc(site["lead"]), metrics="".join(metrics),
-                registry=registry(docs, ""), projects=projects_table(projects, ""), tg_name=esc(tg["name"]), tg_title=esc(tg["title"]),
-                tg_about=esc(tg["about"]), tg_url=esc(tg["url"]))
-    write("index.html", page(site, root="", path="", title="UbVProject — программирование и конструкция БАС",
-                             og_title="UbVProject — программирование и конструкция БАС", description=site["lead"],
-                             og_image="assets/og/home.png", content=home))
-
-    write("docs/index.html", page(site, root="../", path="docs/", title="Документы UBV-AS — UbVProject",
-                                  og_title="Документы UBV-AS", description="Справки и пособия UbVProject: реестр с PDF.",
-                                  og_image="assets/og/home.png", content=fill(tpl("docs.html"), root="../",
-                                  registry=registry(docs, "../")), nav_docs="on"))
-
-    write("404.html", page(site, root="/", path="404.html", title="Страница не найдена — UbVProject",
-                           og_title="UbVProject", description=site["lead"], og_image="assets/og/home.png",
-                           content=fill(tpl("404.html"), root="/")))
-
+    import theme
+    c = content()
+    site, docs = c["site"], sorted(c["docs"], key=lambda d: d["code"], reverse=True)
+    write("index.html", theme.home_page(c))
+    write("docs/index.html", theme.docs_redirect(c))
+    write("404.html", theme.not_found(c))
     for d in docs:
-        build_doc(site, d)
+        dirp = os.path.join(ROOT, "docs", slug(d["code"]))
+        if d.get("web") and os.path.exists(os.path.join(dirp, "index.html")) and "fig/" in open(os.path.join(dirp, "index.html"), encoding="utf-8").read(200000):
+            continue                     # веб-версия справки — её делает «ubv.py web», сборка её не трогает
+        write("docs/%s/index.html" % slug(d["code"]), theme.doc_landing(c, d))
 
     og_home = os.path.join(ROOT, "assets", "og", "home.png")
     if images or not os.path.exists(og_home):
-        render_og(og_home, kind="Документы и проекты", title=site["headline"], meta='<span>%s</span>' % esc(tg["name"]))
+        render_og(og_home, kind=c["home"]["kicker"], title=" ".join(c["home"]["title"]),
+                  meta='<span>%s</span>' % esc(site["telegram"]["name"]))
     for d in docs:
         dirp = os.path.join(ROOT, "docs", slug(d["code"]))
         if images or not os.path.exists(os.path.join(dirp, "og.png")):
             doc_images(d)
 
-    urls = [""] + ["docs/"] + ["docs/%s/" % slug(d["code"]) for d in docs] + [p["path"] for p in projects]
+    partners = [p["path"] for p in c["projects"].get("partners", []) if p.get("path")]
+    urls = [""] + ["docs/%s/" % slug(d["code"]) for d in docs] + partners
     base = site["base_url"].rstrip("/") + "/"
     write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
           + "".join("  <url><loc>%s%s</loc></url>\n" % (base, u) for u in urls) + "</urlset>\n")
     write("robots.txt", "User-agent: *\nAllow: /\nSitemap: %ssitemap.xml\n" % base)
-    print("собрано: главная, реестр, %d %s" % (len(docs), plural(len(docs), "документ", "документа", "документов")))
+    print("собрано: главная (%d вкладок), %d %s" % (len(site["nav"]), len(docs), plural(len(docs), "документ", "документа", "документов")))
 
 
-def build_doc(site, d):
-    s, root = slug(d["code"]), "../../"
-    kv = [("Обозначение", "<code>%s</code>, редакция %s" % (esc(d["code"]), esc(d["edition"]))),
-          ("Дата", ru_date(d["date"]))]
-    if d.get("client"):
-        kv.append(("Подготовлено", "по запросу " + esc(d["client"])))
-    kv.append(("Объём", "%d %s, PDF %s" % (d["pages"], plural(d["pages"], "страница", "страницы", "страниц"), d["size"])))
-    post = ('<a class="btn ghost" href="%s" rel="noopener">Пост в канале ↗</a>' % esc(d["post"])) if d.get("post") else ""
-    limits = ""
-    if d.get("limits"):
-        limits = '<aside class="callout"><div class="h">Что не вошло и ограничения</div>%s</aside>' % dash(d["limits"])
-    content = fill(tpl("doc.html"), root=root, code=esc(d["code"]), kind=esc(d["kind"]), title=esc(d["title"]),
-                   subtitle=('<p class="sub">%s</p>' % esc(d["subtitle"])) if d.get("subtitle") else "",
-                   pdf=esc(d["pdf"]), size=esc(d["size"]), post_btn=post,
-                   kv="".join('<tr><td class="k">%s</td><td>%s</td></tr>' % r for r in kv),
-                   about="".join("<p>%s</p>" % esc(p) for p in d.get("about", [d["summary"]])),
-                   points=("<h2>Главное</h2>" + dash(d["points"])) if d.get("points") else "",
-                   limits=limits, pages="%d %s" % (d["pages"], plural(d["pages"], "страница", "страницы", "страниц")))
-    write("docs/%s/index.html" % s, page(site, root=root, path="docs/%s/" % s, og_type="article",
-                                         title="%s · %s — UbVProject" % (d["code"], d["short"]),
-                                         og_title="%s · %s" % (d["code"], d["short"]), description=d["summary"],
-                                         og_image="docs/%s/og.png" % s, content=content, nav_docs="on"))
+def cmd_web(code):
+    """Веб-версия справки из PDF: текст переносится без изменений и сверяется слово в слово."""
+    from docweb import doc_web
+    for t in ("pdftohtml", "pdftoppm", "pdftotext", "magick"):
+        need(t, "brew install poppler imagemagick")
+    docs = load(DOCS_JSON, [])
+    d = next((x for x in docs if x["code"] == code.upper()), None)
+    if not d:
+        sys.exit("нет документа %s" % code)
+    s = slug(d["code"])
+    dirp = os.path.join(ROOT, "docs", s)
+    base = load(SITE_JSON, {})["base_url"].rstrip("/") + "/"
+    meta = {"title": "%s · %s — UBVPROJECT" % (d["code"], d["short"]), "description": d["summary"], "url": base + "docs/%s/" % s,
+            "og_image": base + "docs/%s/og.png" % s, "pdf": d["pdf"], "code": d["code"],
+            "code_line": "%s · ред. %s" % (d["code"], d["edition"])}
+    rep = doc_web.run(os.path.join(dirp, d["pdf"]), dirp, os.path.join(ROOT, "_tools", ".cache", s), meta)
+    d["web"] = True
+    save(DOCS_JSON, docs)
+    print("веб-версия %s: %d слов, %d вопросов, %d таблиц, %d рисунков — сверка с PDF без расхождений"
+          % (d["code"], rep["words"], rep["questions"], rep["tables"], rep["figures"]))
+    build()
 
 
 # ---------- картинки: обложка и превью для Telegram ----------
@@ -232,7 +191,7 @@ def render_og(out, *, kind, title, meta, cover=None):
     os.makedirs(os.path.dirname(out), exist_ok=True)
     try:
         subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
-                        "--allow-file-access-from-files", "--window-size=1200,630", "--screenshot=" + out, "file://" + tmp],
+                        "--allow-file-access-from-files", "--virtual-time-budget=4000", "--window-size=1200,630", "--screenshot=" + out, "file://" + tmp],
                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     finally:
         os.remove(tmp)
@@ -342,6 +301,11 @@ def main(argv):
         print(__doc__)
     elif argv[0] == "add" and len(argv) == 2:
         cmd_add(argv[1])
+    elif argv[0] == "web" and len(argv) == 2:
+        cmd_web(argv[1])
+    elif argv[0] == "cms":
+        import cms
+        cms.serve(ROOT, build)
     elif argv[0] == "link" and len(argv) == 3:
         cmd_link(argv[1], argv[2])
     elif argv[0] == "build":

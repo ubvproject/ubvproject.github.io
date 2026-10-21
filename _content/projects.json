@@ -1,10 +1,27 @@
-[
-  {
-    "slug": "dronegate",
-    "name": "DRONEGATE",
-    "title": "Автосудейство для дрон-пионербола",
-    "kind": "Проект КБ · ГК «Геоскан»",
-    "date": "2026-10-20",
-    "path": "projects/dronegate/"
-  }
-]
+{
+  "title": "Проекты UbV",
+  "soon_label": "Скоро",
+  "soon": "Собственные изделия UbV появятся здесь после испытаний. Сейчас в разделе — проекты, сделанные для партнёров.",
+  "soon_hint": "Наведите на изображение — модель превратится в чертёж",
+  "soon_image": "assets/v2/shade_1d.webp",
+  "soon_image_light": "assets/v2/shade_1l.webp",
+  "soon_lineart": "assets/v2/line_1.webp",
+  "partners_title": "Проекты при поддержке UbVProject",
+  "partners_lead": "Эти проекты принадлежат партнёрам и выходят под их брендом. UbVProject — разработчики / база знаний / помощь в разработке.",
+  "partners": [
+    {
+      "slug": "dronegate",
+      "name": "DRONEGATE",
+      "title": "Автосудейство для дрон-пионербола",
+      "who": "Проект МКБ · при поддержке UbVProject",
+      "about": "Шестиугольные ворота с ИК-датчиком пролёта, светодиодной подсветкой команды и коробкой электроники. Проект разработан МКБ при поддержке UbVProject.",
+      "date": "2026-10-20",
+      "path": "projects/dronegate/",
+      "image": "assets/v2/gate_1.jpg",
+      "gallery": [
+        "assets/v2/gate_2.jpg",
+        "assets/v2/gate_3.jpg"
+      ]
+    }
+  ]
+}

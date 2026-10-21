@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UBVPROJECT · редактор</title>
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Michroma&display=swap">
+<style>
+/* Редактор: слева разделы, в центре форма раздела, справа предпросмотр сайта. Палитра «Карбон». */
+:root {
+  --bg: #0D0E10; --panel: #131518; --panel-2: #191C20; --fg: #E9E9E6; --fg-2: #A4A9B0; --muted: #6F757D; --rule: #24272C;
+  --accent: #FF5A1F; --ok: #4CC38A; --err: #FF6B6B;
+  --i: #E9E9E6; --a: #FF5A1F; --b: #0D0E10; --m: #3A3E44;
+  --body: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", Menlo, monospace; --word: "Michroma", Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 var(--body); display: grid; grid-template-rows: 56px minmax(0, 1fr); }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.top { display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--rule); background: var(--panel); }
+.top .word { font: 400 13px var(--word); letter-spacing: .16em; }
+.top .tag { font: 500 11px var(--mono); color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+.top .sp { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.dirty { font: 500 12px var(--mono); color: var(--accent); }
+.btn { padding: 8px 14px; border: 1px solid var(--rule); background: transparent; border-radius: 6px; transition: background .2s, border-color .2s; }
+.btn:hover { border-color: var(--fg-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #0D0E10; font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.sm { padding: 4px 9px; font-size: 12px; }
+.btn:disabled { opacity: .45; cursor: default; }
+.app { display: grid; grid-template-columns: 220px minmax(380px, 1fr) minmax(0, 1.1fr); min-height: 0; }
+.app.nopreview { grid-template-columns: 220px minmax(0, 1fr) 0; }
+nav.side { border-right: 1px solid var(--rule); padding: 14px 10px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+nav.side button { text-align: left; padding: 9px 12px; border: 0; background: none; border-radius: 6px; color: var(--fg-2); display: flex; justify-content: space-between; align-items: center; }
+nav.side button:hover { background: var(--panel); color: var(--fg); }
+nav.side button.on { background: var(--panel-2); color: var(--fg); box-shadow: inset 2px 0 0 var(--accent); }
+nav.side button i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: none; }
+nav.side button.dirty i { display: block; }
+.git { margin-top: auto; padding: 12px; border: 1px solid var(--rule); border-radius: 8px; font-size: 12px; color: var(--fg-2); }
+.git b { color: var(--fg); font-weight: 600; }
+.git ul { margin: 8px 0 0; padding: 0; list-style: none; max-height: 160px; overflow: auto; font: 11px/1.6 var(--mono); }
+.editor { overflow: auto; padding: 22px 26px 80px; }
+.editor h1 { font: 600 20px var(--body); margin: 0 0 4px; }
+.editor .hint { color: var(--muted); margin: 0 0 18px; }
+.field { display: grid; gap: 6px; margin-bottom: 16px; }
+.field > label { font: 500 12px var(--mono); color: var(--fg-2); letter-spacing: .04em; }
+.field .note { font-size: 12px; color: var(--muted); }
+input[type=text], input[type=url], input[type=date], input[type=number], textarea, select {
+  width: 100%; padding: 9px 11px; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; transition: border-color .2s; }
+input:focus, textarea:focus, select:focus { border-color: var(--fg-2); outline: none; }
+input[readonly] { color: var(--muted); }
+textarea { resize: vertical; min-height: 76px; line-height: 1.5; }
+.count { font: 11px var(--mono); color: var(--muted); justify-self: end; }
+.count.over { color: var(--accent); }
+fieldset.group { border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px 2px; margin: 0 0 18px; }
+fieldset.group > legend { font: 600 13px var(--body); padding: 0 6px; }
+.list { display: grid; gap: 10px; }
+.item { border: 1px solid var(--rule); border-radius: 10px; background: var(--panel); }
+.item > .ih { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; cursor: pointer; user-select: none; }
+.item > .ih .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.item > .ih .n { font: 11px var(--mono); color: var(--muted); }
+.item > .ib { padding: 4px 14px 2px; border-top: 1px solid var(--rule); }
+.item.closed > .ib { display: none; }
+.lines .row { display: flex; gap: 6px; margin-bottom: 6px; }
+.lines .row input, .lines .row textarea { flex: 1; }
+.range { display: flex; gap: 10px; align-items: center; }
+.range input { flex: 1; accent-color: var(--accent); }
+.range output { font: 12px var(--mono); width: 40px; text-align: right; }
+.check { display: flex; gap: 8px; align-items: center; }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+.img { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; align-items: center; }
+.img .th { width: 120px; height: 74px; border: 1px solid var(--rule); border-radius: 6px; background: #000 center/cover no-repeat; }
+.img .path { font: 12px var(--mono); color: var(--fg-2); word-break: break-all; }
+.icons-pick { display: flex; gap: 10px; align-items: center; }
+.icons-pick .cur svg { width: 52px; height: 52px; }
+.sym .f-i { fill: var(--i); } .sym .f-a { fill: var(--a); } .sym .f-b { fill: var(--b); } .sym .f-m { fill: var(--m); }
+.sym .s-i { stroke: var(--i); } .sym .s-a { stroke: var(--a); } .sym .s-b { stroke: var(--b); } .sym .s-m { stroke: var(--m); }
+.preview { border-left: 1px solid var(--rule); display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; background: #08090A; }
+.preview .bar { display: flex; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--rule); }
+.preview .bar .lbl { font: 11px var(--mono); color: var(--muted); margin-right: auto; }
+.preview .frame { display: grid; place-items: start center; overflow: auto; padding: 0; }
+.preview iframe { width: 100%; height: 100%; border: 0; background: #0D0E10; transition: width .3s; }
+.preview.mobile iframe { width: 390px; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: none; padding: 4px 9px; font-size: 12px; color: var(--fg-2); }
+.seg button.on { background: var(--panel-2); color: var(--fg); }
+dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--rule); border-radius: 12px; padding: 18px; width: min(860px, 92vw); max-height: 82vh; }
+dialog::backdrop { background: rgba(0,0,0,.6); }
+dialog h2 { margin: 0 0 12px; font-size: 16px; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; max-height: 56vh; overflow: auto; }
+.gallery button { border: 1px solid var(--rule); background: #000; border-radius: 8px; padding: 0; overflow: hidden; display: grid; text-align: left; }
+.gallery button:hover { border-color: var(--accent); }
+.gallery img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+.gallery span { font: 10px var(--mono); color: var(--fg-2); padding: 4px 6px; word-break: break-all; background: var(--panel); }
+.gallery.icons { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+.gallery.icons button { background: var(--bg); justify-items: center; padding: 10px 6px 6px; gap: 4px; }
+.gallery.icons svg { width: 64px; height: 64px; }
+.gallery.icons span { background: none; text-align: center; }
+.toast { position: fixed; right: 18px; bottom: 18px; background: var(--panel-2); border: 1px solid var(--rule); border-left: 3px solid var(--ok); padding: 10px 14px; border-radius: 8px; max-width: 420px; animation: up .3s both; white-space: pre-wrap; }
+.toast.err { border-left-color: var(--err); }
+@keyframes up { from { opacity: 0; transform: translateY(8px); } }
+.lock { padding: 12px 14px; border: 1px dashed var(--rule); border-radius: 8px; color: var(--fg-2); margin-bottom: 18px; }
+@media (max-width: 1100px) { .app { grid-template-columns: 190px minmax(0, 1fr); } .preview { display: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="word">UBVPROJECT</span><span class="tag">редактор сайта · локально</span>
+  <span class="sp">
+    <span class="dirty" id="dirty" hidden>есть несохранённые правки</span>
+    <button class="btn" id="undo" type="button" title="Вернуть раздел к версии до последнего сохранения">Откатить раздел</button>
+    <button class="btn" id="togglePrev" type="button">Предпросмотр</button>
+    <button class="btn primary" id="save" type="button" title="Cmd+S">Сохранить и собрать</button>
+  </span>
+</header>
+<div class="app" id="app">
+  <nav class="side" id="side" aria-label="Разделы"><div id="navlist" style="display:grid;gap:2px"></div><div class="git" id="git"></div></nav>
+  <section class="editor" id="editor" aria-live="polite"></section>
+  <section class="preview" id="preview">
+    <div class="bar"><span class="lbl" id="plbl">предпросмотр: /#home</span>
+      <span class="seg" id="ptheme"><button type="button" data-v="dark" class="on">Тёмная</button><button type="button" data-v="light">Светлая</button></span>
+      <span class="seg" id="pdev"><button type="button" data-v="desk" class="on">ПК</button><button type="button" data-v="mob">Телефон</button></span>
+      <button class="btn sm" id="popen" type="button">Открыть ↗</button>
+    </div>
+    <div class="frame"><iframe id="frame" title="Предпросмотр сайта" src="/#home"></iframe></div>
+  </section>
+</div>
+<dialog id="dlg"><h2 id="dlgT"></h2><div id="dlgB"></div><div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px">
+  <label class="btn" id="upl" hidden>Загрузить картинку…<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden id="file"></label>
+  <span style="margin-left:auto"></span><button class="btn" type="button" id="dlgX">Закрыть</button></div></dialog>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- схема разделов
+const T = (k, label, o = {}) => ({ k, t: "text", label, ...o });
+const TA = (k, label, o = {}) => ({ k, t: "textarea", label, ...o });
+const SCHEMA = {
+  home: { title: "Главная", tab: "home", hint: "Первый экран и подписи блоков главной страницы.", fields: [
+    T("kicker", "Надзаголовок", { max: 50 }),
+    { k: "title", t: "lines", label: "Заголовок — по строкам (каждая строка выезжает отдельно)", max: 24 },
+    TA("lead", "Подзаголовок", { max: 220 }),
+    { k: "facts", t: "list", label: "Цифры под заголовком", add: { value: "", label: "" }, name: i => i.value, item: [T("value", "Значение", { max: 22 }), T("label", "Подпись", { max: 40 })] },
+    T("stage_caption", "Подпись под знаком"),
+    { k: "blocks", t: "group", label: "Блоки главной", fields: [
+      T("principle_label", "Метка блока «Принцип»"), T("tech_label", "Метка блока «Технологии»"), T("tech_title", "Заголовок блока «Технологии»"),
+      TA("tech_lead", "Текст блока «Технологии»"), T("docs_label", "Метка блока «Документы»"), T("docs_title", "Заголовок блока «Документы»"),
+      T("news_label", "Метка блока «Новости»"), T("news_title", "Заголовок блока «Новости»"),
+      { k: "news_count", t: "number", label: "Сколько новостей показывать на главной", min: 0, max: 6 } ] } ] },
+  optimum: { title: "Принцип", tab: "tech", hint: "Блок «Оптимизировано всё» — на главной и во вкладке «Технологии». Ползунок — длина полосы.", fields: [
+    T("title", "Заголовок"), TA("lead", "Текст", { max: 260 }),
+    { k: "min", t: "list", label: "MINIMUM", add: { name: "", text: "", value: .2 }, name: i => i.name, item: [T("name", "Что"), T("text", "Пояснение"), { k: "value", t: "range", label: "Полоса" }] },
+    { k: "max", t: "list", label: "MAXIMUM", add: { name: "", text: "", value: .9 }, name: i => i.name, item: [T("name", "Что"), T("text", "Пояснение"), { k: "value", t: "range", label: "Полоса" }] },
+    { k: "result", t: "group", label: "Итоговая строка", fields: [T("title", "Заголовок"), T("accent", "Слово, выделенное оранжевым (из заголовка)"), TA("text", "Текст")] } ] },
+  tech: { title: "Технологии", tab: "tech", hint: "На главной показываются первые шесть.", fields: [
+    T("title", "Заголовок вкладки"), T("lead", "Подзаголовок"),
+    { k: "items", t: "list", label: "Технологии", add: { icon: "o-grid", title: "", text: "" }, name: i => i.title, item: [{ k: "icon", t: "icon", label: "Пиктограмма" }, T("title", "Название", { max: 36 }), TA("text", "Описание", { max: 220 })] } ] },
+  news: { title: "Новости", tab: "news", hint: "Сортируются по дате. Галочка «На главной» — показывать в блоке новостей главной.", fields: [
+    T("title", "Заголовок вкладки"),
+    { k: "items", t: "list", label: "Новости", newFirst: true, add: () => ({ date: new Date().toISOString().slice(0, 10), tag: "", title: "", text: "", link: "", home: true }), name: i => `${i.date} · ${i.title}`,
+      item: [{ k: "date", t: "date", label: "Дата" }, T("tag", "Метка", { max: 28 }), T("title", "Заголовок", { max: 90 }), TA("text", "Текст", { max: 280 }),
+             { k: "link", t: "url", label: "Ссылка «Подробнее» (пост, документ) — можно пусто" }, { k: "home", t: "check", label: "На главной" }] } ] },
+  projects: { title: "Проекты", tab: "projects", hint: "Свои изделия пока не публикуются — во вкладке блок «Скоро». Партнёрские проекты — «Проекты при поддержке UbVProject».", fields: [
+    T("title", "Заголовок вкладки"), T("soon_label", "Метка блока"), TA("soon", "Текст блока «Скоро»"), T("soon_hint", "Подсказка под текстом"),
+    { k: "soon_image", t: "image", label: "Рендер (тёмная тема)" }, { k: "soon_image_light", t: "image", label: "Рендер (светлая тема)" }, { k: "soon_lineart", t: "image", label: "Чертёж (при наведении)" },
+    T("partners_title", "Название раздела партнёрских проектов"), TA("partners_lead", "Текст раздела"),
+    { k: "partners", t: "list", label: "Проекты при поддержке UbVProject", add: { slug: "", name: "", title: "", who: "", about: "", date: "", path: "", image: "", gallery: [] }, name: i => i.name,
+      item: [T("name", "Код (латиницей)"), T("title", "Название"), T("who", "Подпись (чей проект)"), TA("about", "Описание"), { k: "date", t: "date", label: "Дата" },
+             T("path", "Страница проекта (путь от корня сайта, напр. projects/dronegate/)"), T("slug", "Идентификатор"),
+             { k: "image", t: "image", label: "Главная картинка" }, { k: "gallery", t: "images", label: "Галерея" }] } ] },
+  about: { title: "О UbV", tab: "about", hint: "Что такое UbV и политика проекта.", fields: [
+    T("title", "Заголовок"), { k: "text", t: "lines", label: "Абзацы", area: true },
+    T("policy_title", "Заголовок политики"),
+    { k: "policy", t: "list", label: "Пункты политики", add: { title: "", text: "" }, name: i => i.title, item: [T("title", "Пункт"), TA("text", "Пояснение")] },
+    { k: "draft", t: "check", label: "Пометка «черновик» у политики" } ] },
+  docs: { title: "Документы", tab: "docs", list: true, hint: "Новый документ добавляется командой: python3 ubv.py add файл.pdf. Здесь — карточки и описания.",
+    lock: "Текст справок не редактируется: веб-версия собирается из PDF командой «python3 ubv.py web КОД» и сверяется с ним слово в слово.",
+    item: [T("code", "Код", { ro: true }), T("title", "Полное название"), T("short", "Короткое название (реестр, превью)"), T("kind", "Вид документа"),
+           T("subtitle", "Подзаголовок"), T("client", "Заказчик"), { k: "date", t: "date", label: "Дата редакции" }, T("edition", "Редакция"),
+           TA("summary", "Описание (идёт в превью ссылки)", { max: 200 }), { k: "post", t: "url", label: "Пост в канале" },
+           { k: "image", t: "image", label: "Картинка карточки" }, { k: "about", t: "lines", label: "Аннотация (для страницы без веб-версии)", area: true },
+           { k: "points", t: "lines", label: "Главное" }, { k: "limits", t: "lines", label: "Что не вошло и ограничения" }],
+    name: i => `${i.code} · ${i.short}` },
+  site: { title: "Сайт и меню", tab: "home", hint: "Название, меню, канал, тексты для поисковиков и превью.", fields: [
+    { k: "brand", t: "group", label: "Бренд", fields: [T("word", "Надпись"), T("line", "Расшифровка"), T("footer_note", "Подпись в подвале")] },
+    { k: "seo", t: "group", label: "Поиск и превью ссылки", fields: [T("title", "Заголовок страницы", { max: 70 }), TA("description", "Описание", { max: 200 })] },
+    { k: "nav", t: "list", label: "Меню (порядок и подписи; разделы не удаляются)", fixed: true, name: i => i.label, item: [T("id", "Раздел", { ro: true }), T("label", "Подпись")] },
+    { k: "telegram", t: "group", label: "Telegram", fields: [T("name", "Имя канала"), { k: "url", t: "url", label: "Ссылка" }, T("title", "Название канала"), T("button", "Кнопка в шапке")] },
+    { k: "docs_page", t: "group", label: "Вкладка «Документы»", fields: [T("title", "Заголовок"), TA("lead", "Подзаголовок")] } ] },
+};
+const ORDER = ["home", "optimum", "tech", "news", "projects", "docs", "about", "site"];
+
+// ---------------------------------------------------------------- состояние
+let DATA = {}, SAVED = {}, ICONS = {}, IMAGES = [], HIST = {}, CUR = "home";
+const $ = s => document.querySelector(s);
+const clone = o => JSON.parse(JSON.stringify(o));
+const isDirty = k => JSON.stringify(DATA[k]) !== JSON.stringify(SAVED[k]);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function toast(msg, err) { const t = document.createElement("div"); t.className = "toast" + (err ? " err" : ""); t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), err ? 7000 : 3200); }
+async function api(method, url, body, raw) {
+  const r = await fetch(url, { method, headers: raw ? {} : { "Content-Type": "application/json" }, body: raw ? body : body && JSON.stringify(body) });
+  const j = await r.json().catch(() => ({ ok: false, error: r.statusText }));
+  if (!r.ok || j.ok === false) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+function refreshChrome() {
+  $("#navlist").innerHTML = ORDER.map(k => `<button type="button" data-k="${k}" class="${k === CUR ? "on" : ""} ${isDirty(k) ? "dirty" : ""}">${SCHEMA[k].title}<i></i></button>`).join("");
+  $("#dirty").hidden = !ORDER.some(isDirty);
+  $("#undo").disabled = !HIST[CUR];
+  $("#undo").title = HIST[CUR] ? `Вернуть «${SCHEMA[CUR].title}» к версии до последнего сохранения (сохранений: ${HIST[CUR]})` : "Нет сохранённых версий";
+}
+function renderGit(g) {
+  const box = $("#git");
+  box.innerHTML = `Ветка <b>${esc(g.branch)}</b> · изменено файлов: <b>${g.files.length}</b><br>Публикуем вместе с Claude после всех правок.` +
+    (g.files.length ? `<ul>${g.files.slice(0, 60).map(f => `<li>${esc(f)}</li>`).join("")}</ul>` : "");
+}
+
+// ---------------------------------------------------------------- поля
+function fieldEl(f, obj, onChange) {
+  const wrap = document.createElement("div"); wrap.className = "field";
+  const id = "f" + Math.random().toString(36).slice(2, 9);
+  const lab = `<label for="${id}">${esc(f.label)}</label>`;
+  const v = obj[f.k];
+  const set = val => { obj[f.k] = val; onChange(); };
+  const counter = (el, max) => { if (!max) return; const c = document.createElement("span"); c.className = "count"; const upd = () => { c.textContent = `${el.value.length} / ${max}`; c.classList.toggle("over", el.value.length > max); }; el.addEventListener("input", upd); upd(); wrap.appendChild(c); };
+  if (f.t === "text" || f.t === "url" || f.t === "date" || f.t === "number") {
+    wrap.innerHTML = lab + `<input id="${id}" type="${f.t}" ${f.ro ? "readonly" : ""} ${f.min !== undefined ? `min="${f.min}"` : ""} ${f.max && f.t === "number" ? `max="${f.max}"` : ""}>`;
+    const el = wrap.querySelector("input"); el.value = v ?? "";
+    el.addEventListener("input", () => set(f.t === "number" ? Number(el.value) : el.value));
+    if (f.t === "text") counter(el, f.max);
+  } else if (f.t === "textarea") {
+    wrap.innerHTML = lab + `<textarea id="${id}" rows="3"></textarea>`;
+    const el = wrap.querySelector("textarea"); el.value = v ?? ""; el.addEventListener("input", () => set(el.value)); counter(el, f.max);
+  } else if (f.t === "check") {
+    wrap.innerHTML = `<label class="check"><input id="${id}" type="checkbox"> ${esc(f.label)}</label>`;
+    const el = wrap.querySelector("input"); el.checked = !!v; el.addEventListener("change", () => set(el.checked));
+  } else if (f.t === "range") {
+    wrap.innerHTML = lab + `<div class="range"><input id="${id}" type="range" min="0" max="1" step="0.01"><output></output></div>`;
+    const el = wrap.querySelector("input"), out = wrap.querySelector("output"); el.value = v ?? .5; out.textContent = Math.round(el.value * 100) + "%";
+    el.addEventListener("input", () => { out.textContent = Math.round(el.value * 100) + "%"; set(Number(el.value)); });
+  } else if (f.t === "lines") {
+    wrap.innerHTML = lab + `<div class="lines"></div><div><button class="btn sm" type="button">+ строка</button></div>`;
+    const box = wrap.querySelector(".lines"), arr = Array.isArray(v) ? v : (obj[f.k] = []);
+    const draw = () => { box.innerHTML = ""; arr.forEach((s, i) => {
+      const row = document.createElement("div"); row.className = "row";
+      row.innerHTML = (f.area ? `<textarea rows="3"></textarea>` : `<input type="text">`) + `<button class="btn sm" type="button" title="Выше">↑</button><button class="btn sm" type="button" title="Удалить">✕</button>`;
+      const el = row.firstChild; el.value = s; el.addEventListener("input", () => { arr[i] = el.value; onChange(); });
+      row.children[1].onclick = () => { if (i) { [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]]; draw(); onChange(); } };
+      row.children[2].onclick = () => { arr.splice(i, 1); draw(); onChange(); };
+      box.appendChild(row); }); };
+    wrap.querySelector(".btn").onclick = () => { arr.push(""); draw(); onChange(); box.lastChild?.firstChild?.focus(); };
+    draw();
+  } else if (f.t === "image") {
+    wrap.innerHTML = lab + `<div class="img"><div class="th"></div><div><div class="path"></div><div style="margin-top:6px;display:flex;gap:6px"><button class="btn sm" type="button">Выбрать…</button><button class="btn sm" type="button">Убрать</button></div></div></div>`;
+    const th = wrap.querySelector(".th"), pth = wrap.querySelector(".path"), [pick, clr] = wrap.querySelectorAll("button");
+    const show = () => { th.style.backgroundImage = obj[f.k] ? `url("/${obj[f.k]}")` : "none"; pth.textContent = obj[f.k] || "не выбрана"; };
+    pick.onclick = () => pickImage(p => { set(p); show(); });
+    clr.onclick = () => { set(""); show(); }; show();
+  } else if (f.t === "images") {
+    wrap.innerHTML = lab + `<div class="gallery" style="max-height:none"></div><div style="margin-top:6px"><button class="btn sm" type="button">+ картинка</button></div>`;
+    const g = wrap.querySelector(".gallery"), arr = Array.isArray(v) ? v : (obj[f.k] = []);
+    const draw = () => { g.innerHTML = arr.map((p, i) => `<button type="button" data-i="${i}" title="Убрать"><img src="/${esc(p)}" alt=""><span>${esc(p)} · убрать</span></button>`).join(""); };
+    g.onclick = e => { const b = e.target.closest("button"); if (!b) return; arr.splice(+b.dataset.i, 1); draw(); onChange(); };
+    wrap.querySelector(".btn").onclick = () => pickImage(p => { arr.push(p); draw(); onChange(); });
+    draw();
+  } else if (f.t === "icon") {
+    wrap.innerHTML = lab + `<div class="icons-pick"><span class="cur"></span><span class="nm"></span><button class="btn sm" type="button">Выбрать…</button></div>`;
+    const cur = wrap.querySelector(".cur"), nm = wrap.querySelector(".nm");
+    const show = () => { const ic = ICONS[obj[f.k]]; cur.innerHTML = ic ? `<svg viewBox="0 0 200 200" class="sym">${ic.svg}</svg>` : ""; nm.textContent = ic ? ic.name : "—"; };
+    wrap.querySelector(".btn").onclick = () => pickIcon(k => { set(k); show(); }); show();
+  } else if (f.t === "group") {
+    const fs = document.createElement("fieldset"); fs.className = "group"; fs.innerHTML = `<legend>${esc(f.label)}</legend>`;
+    const sub = obj[f.k] || (obj[f.k] = {});
+    f.fields.forEach(sf => fs.appendChild(fieldEl(sf, sub, onChange)));
+    return fs;
+  } else if (f.t === "list") {
+    wrap.innerHTML = lab;
+    wrap.appendChild(listEl(f, Array.isArray(v) ? v : (obj[f.k] = []), onChange));
+  }
+  if (f.note) wrap.insertAdjacentHTML("beforeend", `<span class="note">${esc(f.note)}</span>`);
+  return wrap;
+}
+
+function listEl(f, arr, onChange) {
+  const box = document.createElement("div"); box.className = "list";
+  const draw = (openIdx) => {
+    box.innerHTML = "";
+    arr.forEach((it, i) => {
+      const card = document.createElement("div"); card.className = "item" + (i === openIdx ? "" : " closed");
+      const name = (f.name ? f.name(it) : "") || "без названия";
+      card.innerHTML = `<div class="ih"><span class="n">${i + 1}</span><span class="t">${esc(name)}</span>` +
+        `<button class="btn sm" type="button" data-a="up" title="Выше">↑</button><button class="btn sm" type="button" data-a="down" title="Ниже">↓</button>` +
+        (f.fixed ? "" : `<button class="btn sm" type="button" data-a="del" title="Удалить">✕</button>`) + `</div><div class="ib"></div>`;
+      const ib = card.querySelector(".ib");
+      const upd = () => { card.querySelector(".t").textContent = (f.name ? f.name(it) : "") || "без названия"; onChange(); };
+      f.item.forEach(sf => ib.appendChild(fieldEl(sf, it, upd)));
+      card.querySelector(".ih").addEventListener("click", e => {
+        const a = e.target.closest("button")?.dataset.a;
+        if (a === "up" && i) { [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]]; draw(i - 1); onChange(); }
+        else if (a === "down" && i < arr.length - 1) { [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]]; draw(i + 1); onChange(); }
+        else if (a === "del") { if (card.dataset.confirm) { arr.splice(i, 1); draw(); onChange(); } else { card.dataset.confirm = 1; const b = e.target.closest("button"); b.textContent = "Удалить?"; setTimeout(() => { delete card.dataset.confirm; b.textContent = "✕"; }, 2500); } }
+        else if (!a) card.classList.toggle("closed");
+      });
+      box.appendChild(card);
+    });
+    if (f.add && !f.fixed) {
+      const add = document.createElement("button"); add.type = "button"; add.className = "btn"; add.textContent = "+ Добавить";
+      add.onclick = () => { const n = typeof f.add === "function" ? f.add() : clone(f.add); if (f.newFirst) { arr.unshift(n); draw(0); } else { arr.push(n); draw(arr.length - 1); } onChange(); };
+      box.appendChild(add);
+    }
+  };
+  draw();
+  return box;
+}
+
+// ---------------------------------------------------------------- выбор картинок и пиктограмм
+function openDlg(title, html, upload) {
+  $("#dlgT").textContent = title; $("#dlgB").innerHTML = html; $("#upl").hidden = !upload; $("#dlg").showModal();
+}
+$("#dlgX").onclick = () => $("#dlg").close();
+let pickCb = null;
+function pickImage(cb) {
+  pickCb = cb;
+  openDlg("Картинка", `<div class="gallery">${IMAGES.map(p => `<button type="button" data-p="${esc(p)}"><img src="/${esc(p)}" alt="" loading="lazy"><span>${esc(p)}</span></button>`).join("")}</div>`, true);
+  $("#dlgB .gallery").onclick = e => { const b = e.target.closest("button"); if (!b) return; $("#dlg").close(); pickCb(b.dataset.p); };
+}
+function pickIcon(cb) {
+  openDlg("Пиктограмма", `<div class="gallery icons">${Object.entries(ICONS).map(([k, v]) => `<button type="button" data-k="${k}"><svg viewBox="0 0 200 200" class="sym">${v.svg}</svg><span>${esc(v.name)}</span></button>`).join("")}</div>`);
+  $("#dlgB .gallery").onclick = e => { const b = e.target.closest("button"); if (!b) return; $("#dlg").close(); cb(b.dataset.k); };
+}
+$("#file").addEventListener("change", async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const j = await api("POST", "/api/upload?name=" + encodeURIComponent(f.name), await f.arrayBuffer(), true);
+    IMAGES = j.images; $("#dlg").close(); pickCb && pickCb(j.path); toast("Загружено: " + j.path);
+  } catch (err) { toast("Не загрузилось: " + err.message, true); }
+  e.target.value = "";
+});
+
+// ---------------------------------------------------------------- редактор раздела
+function renderEditor() {
+  const s = SCHEMA[CUR], ed = $("#editor");
+  ed.innerHTML = `<h1>${s.title}</h1><p class="hint">${esc(s.hint || "")}</p>` + (s.lock ? `<div class="lock">${esc(s.lock)}</div>` : "");
+  const changed = () => { refreshChrome(); };
+  if (s.list) ed.appendChild(listEl({ item: s.item, name: s.name, fixed: true }, DATA[CUR], changed));
+  else s.fields.forEach(f => ed.appendChild(fieldEl(f, DATA[CUR], changed)));
+  refreshChrome();
+  setPreview(s.tab);
+}
+function setPreview(tab) {
+  const fr = $("#frame"); const want = "/#" + tab;
+  $("#plbl").textContent = "предпросмотр: " + want;
+  try { const w = fr.contentWindow; if (w && w.location.pathname === "/") { if (w.location.hash !== "#" + tab) { w.location.hash = tab; w.dispatchEvent(new HashChangeEvent("hashchange")); const b = w.document.querySelector(`[data-tab-btn="${tab}"]`) || w.document.querySelector(`[data-go="${tab}"]`); b && b.click(); } return; } } catch (e) {}
+  fr.src = want;
+}
+$("#side").addEventListener("click", e => { const b = e.target.closest("button[data-k]"); if (!b) return; CUR = b.dataset.k; renderEditor(); });
+
+// ---------------------------------------------------------------- сохранение и сборка
+async function saveAll() {
+  const btn = $("#save"); btn.disabled = true; btn.textContent = "Сохраняю…";
+  try {
+    const dirty = ORDER.filter(isDirty);
+    for (const k of dirty) {
+      const j = await api("PUT", "/api/content/" + k, DATA[k]);
+      SAVED[k] = clone(DATA[k]); HIST[k] = j.history;
+    }
+    btn.textContent = "Собираю…";
+    const b = await api("POST", "/api/build");
+    renderGit(b.git); refreshChrome();
+    reloadPreview();
+    toast((dirty.length ? `Сохранено: ${dirty.map(k => SCHEMA[k].title).join(", ")}\n` : "Изменений не было\n") + b.log);
+  } catch (err) { toast("Не сохранилось: " + err.message, true); }
+  btn.disabled = false; btn.textContent = "Сохранить и собрать";
+}
+function reloadPreview() {
+  const fr = $("#frame");
+  try { const w = fr.contentWindow; const tab = SCHEMA[CUR].tab; w.location.replace("/?t=" + Date.now() + "#" + tab); } catch (e) { fr.src = fr.src; }
+}
+$("#save").onclick = saveAll;
+addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") { e.preventDefault(); saveAll(); } });
+addEventListener("beforeunload", e => { if (ORDER.some(isDirty)) { e.preventDefault(); e.returnValue = ""; } });
+$("#undo").onclick = async () => {
+  if (!HIST[CUR]) return;
+  const b = $("#undo");
+  if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = "Точно откатить?"; setTimeout(() => { delete b.dataset.confirm; b.textContent = "Откатить раздел"; }, 3000); return; }
+  delete b.dataset.confirm; b.textContent = "Откатить раздел";
+  try {
+    const j = await api("POST", "/api/restore/" + CUR);
+    DATA[CUR] = j.data; SAVED[CUR] = clone(j.data); HIST[CUR] = j.history;
+    await api("POST", "/api/build"); renderEditor(); reloadPreview(); toast("Раздел «" + SCHEMA[CUR].title + "» откатан к прошлой версии");
+  } catch (err) { toast("Откат не удался: " + err.message, true); }
+};
+
+// ---------------------------------------------------------------- предпросмотр
+$("#togglePrev").onclick = () => $("#app").classList.toggle("nopreview");
+$("#ptheme").onclick = e => { const b = e.target.closest("button"); if (!b) return; [...$("#ptheme").children].forEach(x => x.classList.toggle("on", x === b));
+  try { $("#frame").contentDocument.documentElement.dataset.theme = b.dataset.v; } catch (err) {} };
+$("#frame").addEventListener("load", () => { const on = $("#ptheme .on"); try { $("#frame").contentDocument.documentElement.dataset.theme = on.dataset.v; } catch (e) {} });
+$("#pdev").onclick = e => { const b = e.target.closest("button"); if (!b) return; [...$("#pdev").children].forEach(x => x.classList.toggle("on", x === b)); $("#preview").classList.toggle("mobile", b.dataset.v === "mob"); };
+$("#popen").onclick = () => window.open("/#" + SCHEMA[CUR].tab, "_blank");
+
+// ---------------------------------------------------------------- старт
+(async () => {
+  try {
+    const j = await api("GET", "/api/content");
+    DATA = j.content; SAVED = clone(j.content); ICONS = j.icons; IMAGES = j.images; HIST = j.history;
+    renderGit(j.git); renderEditor();
+  } catch (err) { $("#editor").innerHTML = `<p>Не удалось загрузить содержимое: ${esc(err.message)}</p>`; }
+})();
+</script>
+</body>
+</html>

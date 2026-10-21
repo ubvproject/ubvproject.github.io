@@ -1,0 +1,29 @@
+{
+  "title": "Что нового в UbV",
+  "items": [
+    {
+      "date": "2026-10-20",
+      "tag": "При поддержке UbVProject",
+      "title": "Dronegate: автосудейство для дрон-пионербола",
+      "text": "Проект КБ, разработанный при поддержке UbVProject. Страница — в разделе «Проекты при поддержке UbVProject».",
+      "link": "",
+      "home": false
+    },
+    {
+      "date": "2026-10-16",
+      "tag": "Сайт",
+      "title": "Запущен ubvproject.github.io",
+      "text": "Витрина документов и проектов для ссылок из канала @UbVsevolod.",
+      "link": "",
+      "home": true
+    },
+    {
+      "date": "2026-10-03",
+      "tag": "Документ",
+      "title": "Справка UBV-AS-2026-01, редакция 2.0",
+      "text": "Сравнение полётных прошивок ArduPilot, PX4, Betaflight и INAV для класса tinywhoop. Ответы на 94 вопроса.",
+      "link": "",
+      "home": true
+    }
+  ]
+}
