@@ -165,8 +165,13 @@ const SCHEMA = {
     { k: "items", t: "list", label: "Новости", newFirst: true, add: () => ({ date: new Date().toISOString().slice(0, 10), tag: "", title: "", text: "", link: "", home: true }), name: i => `${i.date} · ${i.title}`,
       item: [{ k: "date", t: "date", label: "Дата" }, T("tag", "Метка", { max: 28 }), T("title", "Заголовок", { max: 90 }), TA("text", "Текст", { max: 280 }),
              { k: "link", t: "url", label: "Ссылка «Подробнее» (пост, документ) — можно пусто" }, { k: "home", t: "check", label: "На главной" }] } ] },
-  projects: { title: "Проекты", tab: "projects", hint: "Свои изделия пока не публикуются — во вкладке блок «Скоро». Партнёрские проекты — «Проекты при поддержке UbVProject».", fields: [
-    T("title", "Заголовок вкладки"), T("soon_label", "Метка блока"), TA("soon", "Текст блока «Скоро»"), T("soon_hint", "Подсказка под текстом"),
+  projects: { title: "Проекты", tab: "projects", hint: "Свои изделия — список «Изделия UbV» (страница projects/<slug>/ собирается из поля page в _content/projects.json). Пока список пуст, во вкладке блок «Скоро». Партнёрские проекты — «Проекты при поддержке UbVProject».", fields: [
+    T("title", "Заголовок вкладки"), TA("lead", "Подзаголовок вкладки (при наличии своих изделий)"),
+    { k: "own", t: "list", label: "Изделия UbV", add: { slug: "", name: "", title: "", who: "Проект UbV", about: "", date: "", path: "", image: "" }, name: i => i.name,
+      item: [T("name", "Код (латиницей)"), T("title", "Название"), T("who", "Подпись"), TA("about", "Описание (идёт в превью ссылки)", { max: 220 }), { k: "date", t: "date", label: "Дата" },
+             T("path", "Страница проекта (напр. projects/drop3/)"), T("slug", "Идентификатор"), { k: "image", t: "image", label: "Главная картинка" },
+             { k: "post", t: "url", label: "Пост в канале" }] },
+    T("soon_label", "Метка блока"), TA("soon", "Текст блока «Скоро»"), T("soon_hint", "Подсказка под текстом"),
     { k: "soon_image", t: "image", label: "Рендер (тёмная тема)" }, { k: "soon_image_light", t: "image", label: "Рендер (светлая тема)" }, { k: "soon_lineart", t: "image", label: "Чертёж (при наведении)" },
     T("partners_title", "Название раздела партнёрских проектов"), TA("partners_lead", "Текст раздела"),
     { k: "partners", t: "list", label: "Проекты при поддержке UbVProject", add: { slug: "", name: "", title: "", who: "", about: "", date: "", path: "", image: "", gallery: [] }, name: i => i.name,

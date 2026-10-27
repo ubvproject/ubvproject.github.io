@@ -127,8 +127,11 @@ def build(images=False):
         if images or not os.path.exists(os.path.join(dirp, "og.png")):
             doc_images(d)
 
+    own = [p for p in c["projects"].get("own", []) if p.get("path") and p.get("page")]
+    for p in own:
+        write(p["path"] + "index.html", theme.project_page(c, p))
     partners = [p["path"] for p in c["projects"].get("partners", []) if p.get("path")]
-    urls = [""] + ["docs/%s/" % slug(d["code"]) for d in docs] + partners
+    urls = [""] + [p["path"] for p in own] + ["docs/%s/" % slug(d["code"]) for d in docs] + partners
     base = site["base_url"].rstrip("/") + "/"
     write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
           + "".join("  <url><loc>%s%s</loc></url>\n" % (base, u) for u in urls) + "</urlset>\n")

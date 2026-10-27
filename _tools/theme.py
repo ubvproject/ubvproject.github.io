@@ -151,6 +151,26 @@ def doc_cards(c, root=""):
     return "".join(out) or '<p class="lead">Документов пока нет.</p>'
 
 
+def pic(img, alt="", root=""):
+    """Картинка или пара для тем: строка — одна, {"dark": …, "light": …} — по теме сайта."""
+    if isinstance(img, dict):
+        return (f'<img class="t-dark" src="{root}{esc(img["dark"])}" alt="{esc(alt)}" loading="lazy">'
+                f'<img class="t-light" src="{root}{esc(img["light"])}" alt="{esc(alt)}" loading="lazy">')
+    return f'<img src="{root}{esc(img)}" alt="{esc(alt)}" loading="lazy">'
+
+
+def own_cards(p):
+    """Собственные изделия UbV: карточка во вкладке «Проекты» -> страница projects/<slug>/."""
+    out = []
+    for pr in p.get("own", []):
+        dl = f'<a class="btn" href="{esc(pr["path"])}{esc(pr["download"]["file"])}">{esc(pr["download"]["label"])}</a>' if pr.get("download") else ""
+        out.append(f'<div class="doccard reveal"><div class="pic">{pic(pr["image"], pr["name"])}</div>'
+                   f'<div class="txt"><code>{esc(pr["name"])}</code><span class="label">{esc(pr["who"])} · {ru_date(pr["date"])}</span>'
+                   f'<h3>{esc(pr["title"])}</h3><p>{esc(pr["about"])}</p>'
+                   f'<div class="btns"><a class="btn solid" href="{esc(pr["path"])}">Страница проекта →</a>{dl}</div></div></div>')
+    return "".join(out)
+
+
 # ------------------------------------------------------------------ главная (все вкладки)
 def home_page(c):
     h, o, t, n, p, a, s = c["home"], c["optimum"], c["tech"], c["news"], c["projects"], c["about"], c["site"]
@@ -168,6 +188,8 @@ def home_page(c):
             f'<div class="btns">{link}<button class="btn" data-go="projects">← Все проекты</button></div></div></div>'
             + (f'<div class="gal reveal"><figure><img src="{esc(pr["image"])}" alt="" loading="lazy"></figure>{gal}</div>' if gal else ""))
     dp = s.get("docs_page", {})
+    soon = (f'<div class="soon reveal"><div class="pic"><img class="shade t-dark" src="{esc(p["soon_image"])}" alt=""><img class="shade t-light" src="{esc(p["soon_image_light"])}" alt=""><img class="lineart" src="{esc(p["soon_lineart"])}" alt=""></div>'
+            f'<div class="txt"><span class="label">{esc(p["soon_label"])}</span><p>{esc(p["soon"])}</p><span class="label">{esc(p["soon_hint"])}</span></div></div>')
     main = f"""
 <section data-tab="home">{hero(c)}
   <div class="wrap sec">{sec_h(bl["principle_label"], o["title"], o["lead"])}{opt_block(c)}</div>
@@ -178,9 +200,8 @@ def home_page(c):
     <div class="btns reveal" style="margin-top:22px"><button class="btn" data-go="news">Все новости →</button></div></div>
 </section>
 <section data-tab="news"><div class="wrap sec">{sec_h("Новости", n["title"])}{news_list(c)}</div></section>
-<section data-tab="projects"><div class="wrap sec">{sec_h("Проекты", p["title"])}
-  <div class="soon reveal"><div class="pic"><img class="shade t-dark" src="{esc(p["soon_image"])}" alt=""><img class="shade t-light" src="{esc(p["soon_image_light"])}" alt=""><img class="lineart" src="{esc(p["soon_lineart"])}" alt=""></div>
-    <div class="txt"><span class="label">{esc(p["soon_label"])}</span><p>{esc(p["soon"])}</p><span class="label">{esc(p["soon_hint"])}</span></div></div>
+<section data-tab="projects"><div class="wrap sec">{sec_h("Проекты", p["title"], p.get("lead", "") if p.get("own") else "")}
+  {own_cards(p) or soon}
   <div class="powered reveal"><div><span class="pb">{esc(p["partners_title"])}</span><b>{esc(p["partners_title"])}</b></div><button class="btn solid" data-go="powered">Открыть →</button></div>
 </div></section>
 <section data-tab="powered"><div class="wrap sec">{sec_h("Проекты", p["partners_title"], p["partners_lead"])}{"".join(partners)}</div></section>
@@ -208,6 +229,37 @@ def doc_landing(c, d):
             f'<h1>{esc(d["title"])}</h1>{about}<div class="btns"><a class="btn solid" href="{esc(d["pdf"])}">Скачать PDF · {esc(d.get("size", ""))}</a>{post}</div>{pts}{lim}</div></section>')
     return shell(c, root=root, path=f'docs/{d["code"].lower()}/', title=f'{d["code"]} · {d["short"]} — UBVPROJECT',
                  description=d["summary"], og_image=f'docs/{d["code"].lower()}/og.png', main=main, og_type="article")
+
+
+def project_page(c, pr):
+    """Страница собственного изделия: шапка, кадр, числа, галерея, пакет, печать, ограничения, лицензия."""
+    root = "../../"
+    g = pr["page"]
+    dl = pr.get("download")
+    btn = (f'<a class="btn solid" href="{esc(dl["file"])}">{esc(dl["label"])} · {esc(dl.get("size", ""))}</a>' if dl else "")
+    post = f'<a class="btn" href="{esc(pr["post"])}" rel="noopener">Пост в канале ↗</a>' if pr.get("post") else ""
+    facts = "".join(f'<div><b>{esc(f["value"])}</b><span>{esc(f["label"])}</span></div>' for f in g["facts"])
+    lead = "".join(f'<p class="lead">{esc(x)}</p>' for x in g["lead"])
+    gal = "".join(f'<figure class="{esc(x.get("cls", ""))}">{pic(x["img"], x.get("cap", ""), root)}'
+                  f'<figcaption>{esc(x.get("cap", ""))}</figcaption></figure>' for x in g["gallery"])
+    rows = "".join(f'<tr><td><code>{esc(r[0])}</code></td><td>{esc(r[1])}</td><td>{esc(r[2])}</td></tr>' for r in g["files"])
+
+    def block(title, items):
+        return f'<h2>{esc(title)}</h2><ul class="dash">' + "".join(f"<li>{esc(x)}</li>" for x in items) + "</ul>"
+    sections = "".join(block(b["title"], b["items"]) for b in g["blocks"])
+    main = (f'<section class="on"><div class="wrap page pj">'
+            f'<span class="label">{esc(pr["who"])} · {ru_date(pr["date"])}</span><h1>{esc(g["h1"])}</h1>{lead}'
+            f'<div class="btns">{btn}{post}</div>'
+            f'<figure class="pj-hero reveal">{pic(g["hero"], g["h1"], root)}</figure>'
+            f'<div class="pj-facts num reveal">{facts}</div>'
+            f'<h2>{esc(g["idea_title"])}</h2>' + "".join(f"<p class='pj-p'>{esc(x)}</p>" for x in g["idea"]) +
+            f'<div class="pj-gal reveal">{gal}</div>'
+            f'<h2>{esc(g["files_title"])}</h2><p class="pj-p">{esc(g["files_lead"])}</p>'
+            f'<div class="pj-table"><table><thead><tr><th>Файл</th><th>Деталь</th><th>Печать</th></tr></thead><tbody>{rows}</tbody></table></div>'
+            f'{sections}<p class="pj-lic label">{esc(g["license"])}</p>'
+            f'<div class="btns">{btn}<a class="btn" href="{root}#projects">← Все проекты</a></div></div></section>')
+    return shell(c, root=root, path=pr["path"], title=f'{pr["name"]} — {pr["title"]} · UBVPROJECT',
+                 description=pr["about"], og_image=pr["path"] + "og.png", main=main, og_type="article")
 
 
 def docs_redirect(c):
